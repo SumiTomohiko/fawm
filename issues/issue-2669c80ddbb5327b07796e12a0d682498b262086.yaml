@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Drow a task bar at the bottom of a display.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-11-27 17:32:46.057109 Z
+references: []
+
+id: 2669c80ddbb5327b07796e12a0d682498b262086
+log_events: 
+- - 2011-11-27 17:32:46.512290 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

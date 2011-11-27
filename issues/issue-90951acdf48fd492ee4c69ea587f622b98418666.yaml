@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Drow a workspace manager in a task bar.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-11-27 17:34:14.846674 Z
+references: []
+
+id: 90951acdf48fd492ee4c69ea587f622b98418666
+log_events: 
+- - 2011-11-27 17:34:16.095418 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

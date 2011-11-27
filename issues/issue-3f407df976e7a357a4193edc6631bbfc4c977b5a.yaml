@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Drow a minimize button in a title bar.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-11-27 17:33:04.769434 Z
+references: []
+
+id: 3f407df976e7a357a4193edc6631bbfc4c977b5a
+log_events: 
+- - 2011-11-27 17:33:05.371473 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

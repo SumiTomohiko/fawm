@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Drow a popup menu on clicking background.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-11-27 17:30:50.273263 Z
+references: []
+
+id: 66dc118ecbfa99133ea782d65c69b845922eab9c
+log_events: 
+- - 2011-11-27 17:30:51.051723 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

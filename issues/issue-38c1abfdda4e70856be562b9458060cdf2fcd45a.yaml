@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Drow a maximize button in a title bar.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-11-27 17:33:29.524763 Z
+references: []
+
+id: 38c1abfdda4e70856be562b9458060cdf2fcd45a
+log_events: 
+- - 2011-11-27 17:33:29.943442 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
