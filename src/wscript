@@ -1,0 +1,10 @@
+
+def build(bld):
+    bld(
+            features=["c", "cprogram"],
+            source="main.c",
+            target="uwm",
+            cflags=["-Wall", "-Werror", "-O3", "-g"],
+            lib="X11")
+
+# vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=python
