@@ -1,5 +1,5 @@
 .ditz-config
 .lock-waf_*
-.waf-*
+.waf*
 build
 core
