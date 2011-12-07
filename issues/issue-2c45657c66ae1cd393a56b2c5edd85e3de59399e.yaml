@@ -1,5 +1,5 @@
 --- !ditz.rubyforge.org,2008-03-06/issue 
-title: Drow a title bar at top of a window.
+title: Draw a title bar at top of a window.
 desc: ""
 type: :task
 component: core
