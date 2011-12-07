@@ -45,7 +45,7 @@ reparent_toplevels(WindowManager* wm)
     Window* children;
     unsigned int nchildren;
     if (XQueryTree(display, root, &_, &_, &children, &nchildren) == 0) {
-        print_error("XQueryTree failed");
+        print_error("XQueryTree failed.");
         return;
     }
     int i;
