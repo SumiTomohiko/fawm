@@ -3,6 +3,7 @@
 
 struct WindowManager {
     Display* display;
+    unsigned long focused_foreground_color;
 };
 
 typedef struct WindowManager WindowManager;
@@ -28,7 +29,7 @@ reparent_window(WindowManager* wm, Window w)
         wa.x, wa.y,
         wa.width + 2 * border_size, wa.height + title_height + border_size,
         0,
-        BlackPixel(display, screen), WhitePixel(display, screen));
+        BlackPixel(display, screen), wm->focused_foreground_color);
     XReparentWindow(display, w, frame, border_size, title_height);
     XMapWindow(display, frame);
     XMapWindow(display, w);
@@ -58,16 +59,32 @@ reparent_toplevels(WindowManager* wm)
     }
 }
 
+static unsigned long
+alloc_color(WindowManager* wm, const char* name)
+{
+    Display* display = wm->display;
+    int screen = DefaultScreen(display);
+    Colormap colormap = DefaultColormap(display, screen);
+    XColor c;
+    XColor _;
+    if (XAllocNamedColor(display, colormap, name, &c, &_) == 0) {
+        return BlackPixel(display, screen);
+    }
+    return c.pixel;
+}
+
 static void
 wm_main(WindowManager* wm)
 {
+    wm->focused_foreground_color = alloc_color(wm, "light pink");
+
     reparent_toplevels(wm);
     Display* display = wm->display;
     XSelectInput(display, DefaultRootWindow(display), SubstructureRedirectMask);
 
     while (1) {
         XEvent e;
-        XNextEvent(wm->display, &e);
+        XNextEvent(display, &e);
         if (e.type == MapRequest) {
             reparent_window(wm, e.xmaprequest.window);
         }
