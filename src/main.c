@@ -25,6 +25,9 @@ struct WindowManager {
     int frame_size;
     int title_height;
     Frame* frames;
+    Window grasped_frame;
+    int grasped_x;
+    int grasped_y;
 };
 
 typedef struct WindowManager WindowManager;
@@ -88,7 +91,7 @@ static void
 change_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
-    swa.event_mask = ButtonPressMask | ExposureMask | SubstructureNotifyMask;
+    swa.event_mask = ButtonMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | SubstructureNotifyMask;
     XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
 }
 
@@ -267,6 +270,20 @@ is_region_inside(int region_x, int region_y, int region_width, int region_height
 }
 
 static void
+release_frame(WindowManager* wm)
+{
+    wm->grasped_frame = DefaultRootWindow(wm->display);
+}
+
+static void
+grasp_frame(WindowManager* wm, Window w, int x, int y)
+{
+    wm->grasped_frame = w;
+    wm->grasped_x = x;
+    wm->grasped_y = y;
+}
+
+static void
 process_button_event(WindowManager* wm, XButtonEvent* e)
 {
     if (e->button != Button1) {
@@ -279,7 +296,26 @@ process_button_event(WindowManager* wm, XButtonEvent* e)
     int y = e->y;
     if (is_region_inside(close_x, close_y, close_width, close_height, x, y)) {
         destroy_frame(wm, w);
+        return;
     }
+    XWindowAttributes wa;
+    XGetWindowAttributes(wm->display, w, &wa);
+    if (is_region_inside(0, 0, wa.width, wa.height, x, y)) {
+        grasp_frame(wm, w, x, y);
+        return;
+    }
+}
+
+static void
+process_motion_notify(WindowManager* wm, XMotionEvent* e)
+{
+    Display* display = wm->display;
+    if (wm->grasped_frame == DefaultRootWindow(display)) {
+        return;
+    }
+    int x = e->x_root - wm->grasped_x;
+    int y = e->y_root - wm->grasped_y;
+    XMoveWindow(display, e->window, x, y);
 }
 
 static void
@@ -291,6 +327,7 @@ wm_main(WindowManager* wm, Display* display)
     wm->frame_size = 4;
     wm->title_height = 16;
     setup_frame_list(wm);
+    release_frame(wm);
 
     reparent_toplevels(wm);
 
@@ -301,8 +338,15 @@ wm_main(WindowManager* wm, Display* display)
         XNextEvent(display, &e);
         if (e.type == ButtonPress) {
             process_button_event(wm, &e.xbutton);
-        } else if (e.type == DestroyNotify) {
+        }
+        else if (e.type == ButtonRelease) {
+            release_frame(wm);
+        }
+        else if (e.type == DestroyNotify) {
             process_destroy_notify(wm, &e.xdestroywindow);
+        }
+        else if (e.type == MotionNotify) {
+            process_motion_notify(wm, &e.xmotion);
         }
         else if (e.type == Expose) {
             draw_frame(wm, e.xexpose.window);
