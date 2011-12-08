@@ -22,6 +22,7 @@ struct WindowManager {
     Display* display;
     unsigned long focused_foreground_color;
     int border_size;
+    int frame_size;
     int title_height;
     Frame* frames;
 };
@@ -62,7 +63,7 @@ compute_close_icon_x(WindowManager* wm, Window w)
 {
     XWindowAttributes wa;
     XGetWindowAttributes(wm->display, w, &wa);
-    return wa.width - wm->border_size - close_width;
+    return wa.width - wm->border_size - wm->frame_size - close_width;
 }
 
 static void
@@ -80,7 +81,7 @@ draw_frame(WindowManager* wm, Window w)
         DefaultGC(display, DefaultScreen(display)),
         0, 0,
         close_width, close_height,
-        compute_close_icon_x(wm, w), wm->border_size);
+        compute_close_icon_x(wm, w), wm->border_size + wm->frame_size);
 }
 
 static void
@@ -118,14 +119,16 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
     Display* display = wm->display;
     int screen = DefaultScreen(display);
     int border_size = wm->border_size;
-    int width = child_width + 2 * border_size;
-    int height = child_height + wm->title_height + 3 * border_size;
+    int frame_size = wm->frame_size;
+    int width = child_width + 2 * (border_size + frame_size);
+    int title_height = wm->title_height;
+    int height = child_height + title_height + 2 * border_size + 3 * frame_size;
     Window w = XCreateSimpleWindow(
         display,
         DefaultRootWindow(display),
         x, y,
         width, height,
-        0,
+        border_size,
         BlackPixel(display, screen), wm->focused_foreground_color);
     change_event_mask(wm, w);
 
@@ -152,8 +155,10 @@ reparent_window(WindowManager* wm, Window w)
     Frame* frame = create_frame(wm, wa.x, wa.y, wa.width, wa.height);
     frame->child = w;
     int border_size = wm->border_size;
-    int y = 2 * border_size + wm->title_height;
-    XReparentWindow(display, w, frame->window, border_size, y);
+    int frame_size = wm->frame_size;
+    int x = border_size + frame_size;
+    int y = border_size + 2 * frame_size + wm->title_height;
+    XReparentWindow(display, w, frame->window, x, y);
     XMapWindow(display, frame->window);
     XMapWindow(display, w);
     XAddToSaveSet(display, w);
@@ -269,7 +274,7 @@ process_button_event(WindowManager* wm, XButtonEvent* e)
     }
     Window w = e->window;
     int close_x = compute_close_icon_x(wm, w);
-    int close_y = wm->border_size;
+    int close_y = wm->border_size + wm->frame_size;
     int x = e->x;
     int y = e->y;
     if (is_region_inside(close_x, close_y, close_width, close_height, x, y)) {
@@ -282,7 +287,8 @@ wm_main(WindowManager* wm, Display* display)
 {
     wm->display = display;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
-    wm->border_size = 4;
+    wm->border_size = 1;
+    wm->frame_size = 4;
     wm->title_height = 24;
     setup_frame_list(wm);
 
