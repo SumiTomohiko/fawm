@@ -289,7 +289,7 @@ wm_main(WindowManager* wm, Display* display)
     wm->focused_foreground_color = alloc_color(wm, "light pink");
     wm->border_size = 1;
     wm->frame_size = 4;
-    wm->title_height = 24;
+    wm->title_height = 16;
     setup_frame_list(wm);
 
     reparent_toplevels(wm);
