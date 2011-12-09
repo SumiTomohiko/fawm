@@ -22,13 +22,9 @@ enum GraspedPosition {
     GP_NONE,
     GP_TITLE_BAR,
     GP_NORTH,
-    GP_NORTH_EAST,
     GP_EAST,
-    GP_SOUTH_EAST,
     GP_SOUTH,
-    GP_SOUTH_WEST,
-    GP_WEST,
-    GP_NORTH_WEST
+    GP_WEST
 };
 
 typedef enum GraspedPosition GraspedPosition;
