@@ -417,6 +417,13 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
 }
 
 static void
+get_last_event(WindowManager* wm, Window w, int event_type, XEvent* e)
+{
+    Display* display = wm->display;
+    while (XCheckTypedWindowEvent(display, w, event_type, e));
+}
+
+static void
 wm_main(WindowManager* wm, Display* display)
 {
     wm->display = display;
@@ -444,6 +451,7 @@ wm_main(WindowManager* wm, Display* display)
             process_destroy_notify(wm, &e.xdestroywindow);
         }
         else if (e.type == MotionNotify) {
+            get_last_event(wm, e.xmotion.window, MotionNotify, &e);
             process_motion_notify(wm, &e.xmotion);
         }
         else if (e.type == Expose) {
