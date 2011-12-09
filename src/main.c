@@ -337,6 +337,10 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         grasp_frame(wm, GP_EAST, w, x, y);
         return;
     }
+    if (is_region_inside(0, height - frame_size, width, frame_size, x, y)) {
+        grasp_frame(wm, GP_SOUTH, w, x, y);
+        return;
+    }
     if (is_region_inside(0, 0, width, height, x, y)) {
         grasp_frame(wm, GP_TITLE_BAR, w, x, y);
         return;
@@ -384,6 +388,13 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
         XResizeWindow(
             display, child,
             new_width - compute_frame_width(wm), child_attrs.height);
+        return;
+    case GP_SOUTH:
+        new_height = e->y; /* FIXME: incorrect? */
+        XResizeWindow(display, w, frame_attrs.width, new_height);
+        XResizeWindow(
+            display, child,
+            child_attrs.width, new_height - compute_frame_height(wm));
         return;
     case GP_NONE:
     case GP_TITLE_BAR:
