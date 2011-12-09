@@ -5,6 +5,8 @@
 #include <string.h>
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Xatom.h>
 
 #include <uwm/bitmaps/close>
 
@@ -14,6 +16,7 @@ struct Frame {
     Window window;
     Window child;
     Pixmap close_icon;
+    GC title_font_gc;
 };
 
 typedef struct Frame Frame;
@@ -82,13 +85,10 @@ compute_close_icon_x(WindowManager* wm, Window w)
 }
 
 static void
-draw_frame(WindowManager* wm, Window w)
+draw_close_icon(WindowManager* wm, Frame* frame)
 {
     Display* display = wm->display;
-    Frame* frame = search_frame(wm, w);
-    if (frame == NULL) {
-        return;
-    }
+    Window w = frame->window;
     XCopyArea(
         display,
         frame->close_icon,
@@ -97,6 +97,54 @@ draw_frame(WindowManager* wm, Window w)
         0, 0,
         close_width, close_height,
         compute_close_icon_x(wm, w), wm->frame_size);
+}
+
+static void
+get_window_name(WindowManager* wm, char* dest, int size, Window w)
+{
+    XTextProperty prop;
+    dest[0] = '\0';
+    if (XGetTextProperty(wm->display, w, &prop, XA_WM_NAME) == 0) {
+        return;
+    }
+    Atom encoding = prop.encoding;
+    Display* display = wm->display;
+    Atom compound_text_atom = XInternAtom(display, "XA_COMPOUND_TEXT", False);
+    /* FIXME: What is XA_COMPOUND_TEXT? */
+    if ((encoding != XA_STRING) && (encoding != compound_text_atom)) {
+        return;
+    }
+
+    char** strings;
+    int _;
+    if (XTextPropertyToStringList(&prop, &strings, &_) == 0) {
+        return;
+    }
+    snprintf(dest, size, "%s", strings[0]);
+    XFreeStringList(strings);
+}
+
+static void
+draw_title_text(WindowManager* wm, Frame* frame)
+{
+    char text[64];
+    get_window_name(wm, text, array_sizeof(text), frame->child);
+    int frame_size = wm->frame_size;
+    XDrawString(
+        wm->display, frame->window, frame->title_font_gc,
+        frame_size, frame_size + wm->title_height,
+        text, strlen(text));
+}
+
+static void
+draw_frame(WindowManager* wm, Window w)
+{
+    Frame* frame = search_frame(wm, w);
+    if (frame == NULL) {
+        return;
+    }
+    draw_title_text(wm, frame);
+    draw_close_icon(wm, frame);
 }
 
 static void
@@ -140,6 +188,24 @@ compute_frame_height(WindowManager* wm)
     return wm->title_height + 3 * wm->frame_size;
 }
 
+static GC
+load_font_gc(WindowManager* wm, Window w)
+{
+    Display* display = wm->display;
+    const char* name = "-vlgothic-vl_pgothic-medium-i-normal--0-0-0-0-p-0-iso10646-1";
+    XFontStruct* font = XLoadQueryFont(display, name);
+    if (font == NULL) {
+        print_error("XLoadQueryFont failed: %s", name);
+        return DefaultGC(display, DefaultScreen(display));
+    }
+    XGCValues gcv;
+    gcv.foreground = BlackPixel(display, DefaultScreen(display));
+    gcv.font = font->fid;
+    GC gc = XCreateGC(display, w, GCFont | GCForeground, &gcv);
+    XFreeFont(display, font);
+    return gc;
+}
+
 static Frame*
 create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
 {
@@ -165,6 +231,8 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
         close_width, close_height,
         BlackPixel(display, screen), wm->focused_foreground_color,
         DefaultDepth(display, screen));
+    frame->title_font_gc = load_font_gc(wm, w);
+
     insert_frame(wm, frame);
 
     return frame;
@@ -233,9 +301,24 @@ remove_frame(WindowManager* wm, Frame* frame)
 }
 
 static void
+free_gc(WindowManager* wm, GC gc)
+{
+    Display* display = wm->display;
+    if (gc == DefaultGC(display, DefaultScreen(display))) {
+        return;
+    }
+    XFreeGC(display, gc);
+}
+
+static void
 free_frame(WindowManager* wm, Frame* frame)
 {
     remove_frame(wm, frame);
+
+    Display* display = wm->display;
+    free_gc(wm, frame->title_font_gc);
+    XFreePixmap(display, frame->close_icon);
+
     memset(frame, 0xfd, sizeof(*frame));
     free(frame);
 }
@@ -424,7 +507,46 @@ get_last_event(WindowManager* wm, Window w, int event_type, XEvent* e)
 }
 
 static void
-wm_main(WindowManager* wm, Display* display)
+process_expose(WindowManager* wm, XExposeEvent* e)
+{
+    if (e->x == wm->frame_size) {
+        /**
+         * If above condition is true, this Expose event may be a result of
+         * killing a child window. At this time, WM does not draw a frame,
+         * because parent frame will be destroyed soon.
+         * FIXME: More strict checking?
+         */
+        return;
+    }
+    draw_frame(wm, e->window);
+}
+
+static void
+process_event(WindowManager* wm, XEvent* e)
+{
+    if (e->type == ButtonPress) {
+        process_button_press(wm, &e->xbutton);
+    }
+    else if (e->type == ButtonRelease) {
+        release_frame(wm);
+    }
+    else if (e->type == DestroyNotify) {
+        process_destroy_notify(wm, &e->xdestroywindow);
+    }
+    else if (e->type == Expose) {
+        process_expose(wm, &e->xexpose);
+    }
+    else if (e->type == MotionNotify) {
+        get_last_event(wm, e->xmotion.window, MotionNotify, e);
+        process_motion_notify(wm, &e->xmotion);
+    }
+    else if (e->type == MapRequest) {
+        reparent_window(wm, e->xmaprequest.window);
+    }
+}
+
+static void
+setup_window_manager(WindowManager* wm, Display* display)
 {
     wm->display = display;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
@@ -433,33 +555,19 @@ wm_main(WindowManager* wm, Display* display)
     wm->title_height = 16;
     setup_frame_list(wm);
     release_frame(wm);
+}
 
+static void
+wm_main(WindowManager* wm, Display* display)
+{
+    setup_window_manager(wm, display);
     reparent_toplevels(wm);
-
     XSelectInput(display, DefaultRootWindow(display), SubstructureRedirectMask);
 
     while (1) {
         XEvent e;
         XNextEvent(display, &e);
-        if (e.type == ButtonPress) {
-            process_button_press(wm, &e.xbutton);
-        }
-        else if (e.type == ButtonRelease) {
-            release_frame(wm);
-        }
-        else if (e.type == DestroyNotify) {
-            process_destroy_notify(wm, &e.xdestroywindow);
-        }
-        else if (e.type == MotionNotify) {
-            get_last_event(wm, e.xmotion.window, MotionNotify, &e);
-            process_motion_notify(wm, &e.xmotion);
-        }
-        else if (e.type == Expose) {
-            draw_frame(wm, e.xexpose.window);
-        }
-        else if (e.type == MapRequest) {
-            reparent_window(wm, e.xmaprequest.window);
-        }
+        process_event(wm, &e);
     }
 }
 
