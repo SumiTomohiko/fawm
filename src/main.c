@@ -361,10 +361,10 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     Display* display = wm->display;
     Window w = e->window;
     int border_size = wm->border_size;
-    int x = e->x_root - wm->grasped_x - border_size;
-    int y = e->y_root - wm->grasped_y - border_size;
+    int new_x = e->x_root - wm->grasped_x - border_size;
+    int new_y = e->y_root - wm->grasped_y - border_size;
     if (pos == GP_TITLE_BAR) {
-        XMoveWindow(display, w, x, y);
+        XMoveWindow(display, w, new_x, new_y);
         return;
     }
     XWindowAttributes frame_attrs;
@@ -374,36 +374,40 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     Window child = frame->child;
     XWindowAttributes child_attrs;
     XGetWindowAttributes(display, child, &child_attrs);
+    int x = e->x;
+    int y = e->y;
     int new_width;
     int new_height;
     switch (wm->grasped_position) {
     case GP_NORTH:
-        new_height = frame_attrs.y + frame_attrs.height - y;
+        new_height = frame_attrs.y + frame_attrs.height - new_y;
         XMoveResizeWindow(display, w,
-            frame_attrs.x, y,
+            frame_attrs.x, new_y,
             frame_attrs.width, new_height);
         XResizeWindow(
             display, child,
             child_attrs.width, new_height - compute_frame_height(wm));
         return;
     case GP_EAST:
-        new_width = e->x; /* FIXME: incorrect? */
+        new_width = x + (frame_attrs.width - wm->grasped_x);
         XResizeWindow(display, w, new_width, frame_attrs.height);
         XResizeWindow(
             display, child,
             new_width - compute_frame_width(wm), child_attrs.height);
+        wm->grasped_x = x;
         return;
     case GP_SOUTH:
-        new_height = e->y; /* FIXME: incorrect? */
+        new_height = y + (frame_attrs.height - wm->grasped_y);
         XResizeWindow(display, w, frame_attrs.width, new_height);
         XResizeWindow(
             display, child,
             child_attrs.width, new_height - compute_frame_height(wm));
+        wm->grasped_y = y;
         return;
     case GP_WEST:
-        new_width = frame_attrs.x + frame_attrs.width - x;
+        new_width = frame_attrs.x + frame_attrs.width - new_x;
         XMoveResizeWindow(display, w,
-            x, frame_attrs.y,
+            new_x, frame_attrs.y,
             new_width, frame_attrs.height);
         XResizeWindow(
             display, child,
