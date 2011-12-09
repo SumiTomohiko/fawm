@@ -43,6 +43,7 @@ struct WindowManager {
     Window grasped_frame;
     int grasped_x;
     int grasped_y;
+    Window popup_menu;
 };
 
 typedef struct WindowManager WindowManager;
@@ -148,7 +149,7 @@ draw_frame(WindowManager* wm, Window w)
 }
 
 static void
-change_event_mask(WindowManager* wm, Window w)
+change_frame_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
     swa.event_mask = ButtonMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | SubstructureNotifyMask;
@@ -214,13 +215,12 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
     int width = child_width + compute_frame_width(wm);
     int height = child_height + compute_frame_height(wm);
     Window w = XCreateSimpleWindow(
-        display,
-        DefaultRootWindow(display),
+        display, DefaultRootWindow(display),
         x, y,
         width, height,
         wm->border_size,
         BlackPixel(display, screen), wm->focused_foreground_color);
-    change_event_mask(wm, w);
+    change_frame_event_mask(wm, w);
 
     Frame* frame = alloc_frame();
     frame->window = w;
@@ -389,12 +389,26 @@ grasp_frame(WindowManager* wm, GraspedPosition pos, Window w, int x, int y)
 }
 
 static void
+map_popup_menu(WindowManager* wm, int x, int y)
+{
+    Display* display = wm->display;
+    Window popup_menu = wm->popup_menu;
+    XMoveWindow(display, popup_menu, x - 16, y - 16);
+    XMapRaised(display, popup_menu);
+}
+
+static void
 process_button_press(WindowManager* wm, XButtonEvent* e)
 {
     if (e->button != Button1) {
         return;
     }
     Window w = e->window;
+    Display* display = wm->display;
+    if (w == DefaultRootWindow(display)) {
+        map_popup_menu(wm, e->x, e->y);
+        return;
+    }
     int frame_size = wm->frame_size;
     int close_x = compute_close_icon_x(wm, w);
     int close_y = wm->border_size + frame_size;
@@ -431,14 +445,34 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
 }
 
 static void
+unmap_popup_menu(WindowManager* wm)
+{
+    XUnmapWindow(wm->display, wm->popup_menu);
+}
+
+static void
+unmap_popup_menu_if_out(WindowManager* wm, int x, int y)
+{
+    XWindowAttributes wa;
+    XGetWindowAttributes(wm->display, wm->popup_menu, &wa);
+    if (!is_region_inside(wa.x, wa.y, wa.width, wa.height, x, y)) {
+        unmap_popup_menu(wm);
+    }
+}
+
+static void
 process_motion_notify(WindowManager* wm, XMotionEvent* e)
 {
+    Display* display = wm->display;
+    Window w = e->window;
+    if (w == DefaultRootWindow(display)) {
+        unmap_popup_menu_if_out(wm, e->x, e->y);
+        return;
+    }
     GraspedPosition pos = wm->grasped_position;
     if (pos == GP_NONE) {
         return;
     }
-    Display* display = wm->display;
-    Window w = e->window;
     int border_size = wm->border_size;
     int new_x = e->x_root - wm->grasped_x - border_size;
     int new_y = e->y_root - wm->grasped_y - border_size;
@@ -528,6 +562,7 @@ process_event(WindowManager* wm, XEvent* e)
         process_button_press(wm, &e->xbutton);
     }
     else if (e->type == ButtonRelease) {
+        unmap_popup_menu(wm);
         release_frame(wm);
     }
     else if (e->type == DestroyNotify) {
@@ -545,6 +580,19 @@ process_event(WindowManager* wm, XEvent* e)
     }
 }
 
+static Window
+create_popup_menu(WindowManager* wm)
+{
+    Display* display = wm->display;
+    int screen = DefaultScreen(display);
+    return XCreateSimpleWindow(
+        display, DefaultRootWindow(display),
+        0, 0,
+        256, 256,
+        wm->border_size,
+        BlackPixel(display, screen), WhitePixel(display, screen));
+}
+
 static void
 setup_window_manager(WindowManager* wm, Display* display)
 {
@@ -555,6 +603,7 @@ setup_window_manager(WindowManager* wm, Display* display)
     wm->title_height = 16;
     setup_frame_list(wm);
     release_frame(wm);
+    wm->popup_menu = create_popup_menu(wm);
 }
 
 static void
@@ -562,7 +611,8 @@ wm_main(WindowManager* wm, Display* display)
 {
     setup_window_manager(wm, display);
     reparent_toplevels(wm);
-    XSelectInput(display, DefaultRootWindow(display), SubstructureRedirectMask);
+    long mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask | SubstructureRedirectMask;
+    XSelectInput(display, DefaultRootWindow(display), mask);
 
     while (1) {
         XEvent e;
