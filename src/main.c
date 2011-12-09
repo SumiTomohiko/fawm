@@ -316,8 +316,9 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         return;
     }
     Window w = e->window;
+    int frame_size = wm->frame_size;
     int close_x = compute_close_icon_x(wm, w);
-    int close_y = wm->border_size + wm->frame_size;
+    int close_y = wm->border_size + frame_size;
     int x = e->x;
     int y = e->y;
     if (is_region_inside(close_x, close_y, close_width, close_height, x, y)) {
@@ -328,9 +329,12 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
     XGetWindowAttributes(wm->display, w, &wa);
     int width = wa.width;
     int height = wa.height;
-    int frame_size = wm->frame_size;
     if (is_region_inside(0, 0, width, frame_size, x, y)) {
         grasp_frame(wm, GP_NORTH, w, x, y);
+        return;
+    }
+    if (is_region_inside(width - frame_size, 0, frame_size, height, x, y)) {
+        grasp_frame(wm, GP_EAST, w, x, y);
         return;
     }
     if (is_region_inside(0, 0, width, height, x, y)) {
@@ -356,15 +360,16 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
         return;
     }
     XWindowAttributes frame_attrs;
-    XWindowAttributes child_attrs;
+    XGetWindowAttributes(display, w, &frame_attrs);
     Frame* frame = search_frame(wm, w);
     assert(frame != NULL);
     Window child = frame->child;
+    XWindowAttributes child_attrs;
+    XGetWindowAttributes(display, child, &child_attrs);
+    int new_width;
     int new_height;
     switch (wm->grasped_position) {
     case GP_NORTH:
-        XGetWindowAttributes(display, w, &frame_attrs);
-        XGetWindowAttributes(display, child, &child_attrs);
         new_height = frame_attrs.y + frame_attrs.height - y;
         XMoveResizeWindow(display, w,
             frame_attrs.x, y,
@@ -372,6 +377,13 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
         XResizeWindow(
             display, child,
             child_attrs.width, new_height - compute_frame_height(wm));
+        return;
+    case GP_EAST:
+        new_width = e->x; /* FIXME: incorrect? */
+        XResizeWindow(display, w, new_width, frame_attrs.height);
+        XResizeWindow(
+            display, child,
+            new_width - compute_frame_width(wm), child_attrs.height);
         return;
     case GP_NONE:
     case GP_TITLE_BAR:
