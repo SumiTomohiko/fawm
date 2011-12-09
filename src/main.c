@@ -18,6 +18,21 @@ struct Frame {
 
 typedef struct Frame Frame;
 
+enum GraspedPosition {
+    GP_NONE,
+    GP_TITLE_BAR,
+    GP_NORTH,
+    GP_NORTH_EAST,
+    GP_EAST,
+    GP_SOUTH_EAST,
+    GP_SOUTH,
+    GP_SOUTH_WEST,
+    GP_WEST,
+    GP_NORTH_WEST
+};
+
+typedef enum GraspedPosition GraspedPosition;
+
 struct WindowManager {
     Display* display;
     unsigned long focused_foreground_color;
@@ -25,6 +40,7 @@ struct WindowManager {
     int frame_size;
     int title_height;
     Frame* frames;
+    GraspedPosition grasped_position;
     Window grasped_frame;
     int grasped_x;
     int grasped_y;
@@ -66,7 +82,7 @@ compute_close_icon_x(WindowManager* wm, Window w)
 {
     XWindowAttributes wa;
     XGetWindowAttributes(wm->display, w, &wa);
-    return wa.width - wm->border_size - wm->frame_size - close_width;
+    return wa.width - wm->frame_size - close_width;
 }
 
 static void
@@ -84,7 +100,7 @@ draw_frame(WindowManager* wm, Window w)
         DefaultGC(display, DefaultScreen(display)),
         0, 0,
         close_width, close_height,
-        compute_close_icon_x(wm, w), wm->border_size + wm->frame_size);
+        compute_close_icon_x(wm, w), wm->frame_size);
 }
 
 static void
@@ -116,22 +132,31 @@ insert_frame(WindowManager* wm, Frame* frame)
     anchor->next = frame;
 }
 
+static int
+compute_frame_width(WindowManager* wm)
+{
+    return 2 * wm->frame_size;
+}
+
+static int
+compute_frame_height(WindowManager* wm)
+{
+    return wm->title_height + 3 * wm->frame_size;
+}
+
 static Frame*
 create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
 {
     Display* display = wm->display;
     int screen = DefaultScreen(display);
-    int border_size = wm->border_size;
-    int frame_size = wm->frame_size;
-    int width = child_width + 2 * (border_size + frame_size);
-    int title_height = wm->title_height;
-    int height = child_height + title_height + 2 * border_size + 3 * frame_size;
+    int width = child_width + compute_frame_width(wm);
+    int height = child_height + compute_frame_height(wm);
     Window w = XCreateSimpleWindow(
         display,
         DefaultRootWindow(display),
         x, y,
         width, height,
-        border_size,
+        wm->border_size,
         BlackPixel(display, screen), wm->focused_foreground_color);
     change_event_mask(wm, w);
 
@@ -157,10 +182,10 @@ reparent_window(WindowManager* wm, Window w)
     XGetWindowAttributes(display, w, &wa);
     Frame* frame = create_frame(wm, wa.x, wa.y, wa.width, wa.height);
     frame->child = w;
-    int border_size = wm->border_size;
     int frame_size = wm->frame_size;
-    int x = border_size + frame_size;
-    int y = border_size + 2 * frame_size + wm->title_height;
+    int x = frame_size;
+    int y = 2 * frame_size + wm->title_height;
+    XSetWindowBorderWidth(display, w, 0);
     XReparentWindow(display, w, frame->window, x, y);
     XMapWindow(display, frame->window);
     XMapWindow(display, w);
@@ -272,19 +297,20 @@ is_region_inside(int region_x, int region_y, int region_width, int region_height
 static void
 release_frame(WindowManager* wm)
 {
-    wm->grasped_frame = DefaultRootWindow(wm->display);
+    wm->grasped_position = GP_NONE;
 }
 
 static void
-grasp_frame(WindowManager* wm, Window w, int x, int y)
+grasp_frame(WindowManager* wm, GraspedPosition pos, Window w, int x, int y)
 {
+    wm->grasped_position = pos;
     wm->grasped_frame = w;
     wm->grasped_x = x;
     wm->grasped_y = y;
 }
 
 static void
-process_button_event(WindowManager* wm, XButtonEvent* e)
+process_button_press(WindowManager* wm, XButtonEvent* e)
 {
     if (e->button != Button1) {
         return;
@@ -300,8 +326,15 @@ process_button_event(WindowManager* wm, XButtonEvent* e)
     }
     XWindowAttributes wa;
     XGetWindowAttributes(wm->display, w, &wa);
-    if (is_region_inside(0, 0, wa.width, wa.height, x, y)) {
-        grasp_frame(wm, w, x, y);
+    int width = wa.width;
+    int height = wa.height;
+    int frame_size = wm->frame_size;
+    if (is_region_inside(0, 0, width, frame_size, x, y)) {
+        grasp_frame(wm, GP_NORTH, w, x, y);
+        return;
+    }
+    if (is_region_inside(0, 0, width, height, x, y)) {
+        grasp_frame(wm, GP_TITLE_BAR, w, x, y);
         return;
     }
 }
@@ -309,13 +342,42 @@ process_button_event(WindowManager* wm, XButtonEvent* e)
 static void
 process_motion_notify(WindowManager* wm, XMotionEvent* e)
 {
-    Display* display = wm->display;
-    if (wm->grasped_frame == DefaultRootWindow(display)) {
+    GraspedPosition pos = wm->grasped_position;
+    if (pos == GP_NONE) {
         return;
     }
-    int x = e->x_root - wm->grasped_x;
-    int y = e->y_root - wm->grasped_y;
-    XMoveWindow(display, e->window, x, y);
+    Display* display = wm->display;
+    Window w = e->window;
+    int border_size = wm->border_size;
+    int x = e->x_root - wm->grasped_x - border_size;
+    int y = e->y_root - wm->grasped_y - border_size;
+    if (pos == GP_TITLE_BAR) {
+        XMoveWindow(display, w, x, y);
+        return;
+    }
+    XWindowAttributes frame_attrs;
+    XWindowAttributes child_attrs;
+    Frame* frame = search_frame(wm, w);
+    assert(frame != NULL);
+    Window child = frame->child;
+    int new_height;
+    switch (wm->grasped_position) {
+    case GP_NORTH:
+        XGetWindowAttributes(display, w, &frame_attrs);
+        XGetWindowAttributes(display, child, &child_attrs);
+        new_height = frame_attrs.y + frame_attrs.height - y;
+        XMoveResizeWindow(display, w,
+            frame_attrs.x, y,
+            frame_attrs.width, new_height);
+        XResizeWindow(
+            display, child,
+            child_attrs.width, new_height - compute_frame_height(wm));
+        return;
+    case GP_NONE:
+    case GP_TITLE_BAR:
+    default:
+        assert(False);
+    }
 }
 
 static void
@@ -337,7 +399,7 @@ wm_main(WindowManager* wm, Display* display)
         XEvent e;
         XNextEvent(display, &e);
         if (e.type == ButtonPress) {
-            process_button_event(wm, &e.xbutton);
+            process_button_press(wm, &e.xbutton);
         }
         else if (e.type == ButtonRelease) {
             release_frame(wm);
