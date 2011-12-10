@@ -1,5 +1,10 @@
 
+WAF = ./waf
+
 all:
-	./waf
+	$(WAF) build
+
+install:
+	$(WAF) install
 
 # vim: tabstop=8 shiftwidth=8 noexpandtab
