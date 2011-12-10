@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Test mode with a child window specified with --window option.
+desc: ""
+type: :task
+component: core
+release: 
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-10 14:54:42.504090 Z
+references: []
+
+id: b0ae9e944a78df0975ac5e8f0fc34d3388a6e1ad
+log_events: 
+- - 2011-12-10 14:54:42.995536 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
