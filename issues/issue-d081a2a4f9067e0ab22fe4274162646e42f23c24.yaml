@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Firefox causes X error by closing a subwindow.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-10 12:04:32.165842 Z
+references: []
+
+id: d081a2a4f9067e0ab22fe4274162646e42f23c24
+log_events: 
+- - 2011-12-10 12:04:32.883354 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

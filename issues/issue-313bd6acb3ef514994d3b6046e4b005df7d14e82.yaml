@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Change the image of close button when a cursor overwrapped it.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-10 12:06:26.021451 Z
+references: []
+
+id: 313bd6acb3ef514994d3b6046e4b005df7d14e82
+log_events: 
+- - 2011-12-10 12:06:26.586866 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

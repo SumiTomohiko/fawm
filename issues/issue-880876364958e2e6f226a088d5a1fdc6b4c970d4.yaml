@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Highlight selected item of a popup menu.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-10 12:07:39.816963 Z
+references: []
+
+id: 880876364958e2e6f226a088d5a1fdc6b4c970d4
+log_events: 
+- - 2011-12-10 12:07:40.268806 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Change cursor image for resizing frame.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-10 12:06:49.840494 Z
+references: []
+
+id: 711cb92ae936ec02f5166dc5e4ade383f227da3c
+log_events: 
+- - 2011-12-10 12:06:50.370088 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

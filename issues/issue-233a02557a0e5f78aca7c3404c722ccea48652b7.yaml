@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Paint background of popup menu's title.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-10 12:09:16.615699 Z
+references: []
+
+id: 233a02557a0e5f78aca7c3404c722ccea48652b7
+log_events: 
+- - 2011-12-10 12:09:17.187681 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
