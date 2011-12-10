@@ -1,8 +1,14 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -43,7 +49,17 @@ struct WindowManager {
     Window grasped_frame;
     int grasped_x;
     int grasped_y;
-    Window popup_menu;
+    struct {
+        Window window;
+        GC font_gc;
+        int font_height;
+        int font_descent;
+        int items_num;
+        struct {
+            char caption[32];
+            char command[32];
+        } items[3];
+    } popup_menu;
 };
 
 typedef struct WindowManager WindowManager;
@@ -156,16 +172,22 @@ change_frame_event_mask(WindowManager* wm, Window w)
     XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
 }
 
-static Frame*
-alloc_frame()
+static void*
+alloc_memory(size_t size)
 {
-    Frame* frame = (Frame*)malloc(sizeof(Frame));
-    if (frame == NULL) {
+    void* p = malloc(size);
+    if (p == NULL) {
         print_error("malloc failed.");
         abort();
     }
-    memset(frame, 0xfb, sizeof(*frame));
-    return frame;
+    memset(p, 0xfb, size);
+    return p;
+}
+
+static Frame*
+alloc_frame()
+{
+    return (Frame*)alloc_memory(sizeof(Frame));
 }
 
 static void
@@ -189,20 +211,33 @@ compute_frame_height(WindowManager* wm)
     return wm->title_height + 3 * wm->frame_size;
 }
 
+static XFontStruct*
+load_font(WindowManager* wm)
+{
+    const char* name = "-vlgothic-vl_pgothic-medium-i-normal--0-0-0-0-p-0-iso10646-1";
+    return XLoadQueryFont(wm->display, name);
+}
+
+static GC
+create_font_gc(WindowManager* wm, Window w, XFontStruct* font)
+{
+    Display* display = wm->display;
+    XGCValues gcv;
+    gcv.foreground = BlackPixel(display, DefaultScreen(display));
+    gcv.font = font->fid;
+    return XCreateGC(display, w, GCFont | GCForeground, &gcv);
+}
+
 static GC
 load_font_gc(WindowManager* wm, Window w)
 {
     Display* display = wm->display;
-    const char* name = "-vlgothic-vl_pgothic-medium-i-normal--0-0-0-0-p-0-iso10646-1";
-    XFontStruct* font = XLoadQueryFont(display, name);
+    XFontStruct* font = load_font(wm);
     if (font == NULL) {
-        print_error("XLoadQueryFont failed: %s", name);
+        print_error("XLoadQueryFont failed.");
         return DefaultGC(display, DefaultScreen(display));
     }
-    XGCValues gcv;
-    gcv.foreground = BlackPixel(display, DefaultScreen(display));
-    gcv.font = font->fid;
-    GC gc = XCreateGC(display, w, GCFont | GCForeground, &gcv);
+    GC gc = create_font_gc(wm, w, font);
     XFreeFont(display, font);
     return gc;
 }
@@ -392,7 +427,7 @@ static void
 map_popup_menu(WindowManager* wm, int x, int y)
 {
     Display* display = wm->display;
-    Window popup_menu = wm->popup_menu;
+    Window popup_menu = wm->popup_menu.window;
     XMoveWindow(display, popup_menu, x - 16, y - 16);
     XMapRaised(display, popup_menu);
 }
@@ -447,32 +482,18 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
 static void
 unmap_popup_menu(WindowManager* wm)
 {
-    XUnmapWindow(wm->display, wm->popup_menu);
-}
-
-static void
-unmap_popup_menu_if_out(WindowManager* wm, int x, int y)
-{
-    XWindowAttributes wa;
-    XGetWindowAttributes(wm->display, wm->popup_menu, &wa);
-    if (!is_region_inside(wa.x, wa.y, wa.width, wa.height, x, y)) {
-        unmap_popup_menu(wm);
-    }
+    XUnmapWindow(wm->display, wm->popup_menu.window);
 }
 
 static void
 process_motion_notify(WindowManager* wm, XMotionEvent* e)
 {
-    Display* display = wm->display;
-    Window w = e->window;
-    if (w == DefaultRootWindow(display)) {
-        unmap_popup_menu_if_out(wm, e->x, e->y);
-        return;
-    }
     GraspedPosition pos = wm->grasped_position;
     if (pos == GP_NONE) {
         return;
     }
+    Display* display = wm->display;
+    Window w = e->window;
     int border_size = wm->border_size;
     int new_x = e->x_root - wm->grasped_x - border_size;
     int new_y = e->y_root - wm->grasped_y - border_size;
@@ -540,9 +561,32 @@ get_last_event(WindowManager* wm, Window w, int event_type, XEvent* e)
     while (XCheckTypedWindowEvent(display, w, event_type, e));
 }
 
+const char* popup_title = "Applications";
+
+static void
+draw_popup_menu(WindowManager* wm)
+{
+    Display* display = wm->display;
+    Window w = wm->popup_menu.window;
+    GC gc = wm->popup_menu.font_gc;
+    int y = wm->popup_menu.font_height - wm->popup_menu.font_descent;
+    XDrawString(display, w, gc, 0, y, popup_title, strlen(popup_title));
+    int i;
+    for (i = 0; i < wm->popup_menu.items_num; i++) {
+        y += wm->popup_menu.font_height;
+        const char* text = wm->popup_menu.items[i].caption;
+        XDrawString(display, w, gc, 0, y, text, strlen(text));
+    }
+}
+
 static void
 process_expose(WindowManager* wm, XExposeEvent* e)
 {
+    Window w = e->window;
+    if (w == wm->popup_menu.window) {
+        draw_popup_menu(wm);
+        return;
+    }
     if (e->x == wm->frame_size) {
         /**
          * If above condition is true, this Expose event may be a result of
@@ -552,7 +596,67 @@ process_expose(WindowManager* wm, XExposeEvent* e)
          */
         return;
     }
-    draw_frame(wm, e->window);
+    draw_frame(wm, w);
+}
+
+static pid_t
+do_fork()
+{
+    pid_t pid = fork();
+    if (pid == -1) {
+        print_error("fork failed: %s", strerror(errno));
+        exit(1);
+    }
+    return pid;
+}
+
+static void
+fork_child(const char* cmd)
+{
+    pid_t pid = do_fork();
+    if (pid == 0) {
+        execlp(cmd, cmd, NULL);
+        exit(1);
+    }
+    exit(0);
+}
+
+static void
+execute(const char* cmd)
+{
+    if (strcmp(cmd, "exit") == 0) {
+        exit(0);
+    }
+
+    pid_t pid = do_fork();
+    if (pid == 0) {
+        fork_child(cmd);
+        exit(1);
+    }
+    waitpid(pid, NULL, 0);
+}
+
+static void
+process_button_release(WindowManager* wm, XButtonEvent* e)
+{
+    Display* display = wm->display;
+    if (e->window != DefaultRootWindow(display)) {
+        release_frame(wm);
+        return;
+    }
+    unmap_popup_menu(wm);
+    XWindowAttributes wa;
+    XGetWindowAttributes(display, wm->popup_menu.window, &wa);
+    int x = e->x;
+    int y = e->y;
+    if (!is_region_inside(wa.x, wa.y, wa.width, wa.height, x, y)) {
+        return;
+    }
+    int index = (y - wa.y) / wm->popup_menu.font_height - 1;
+    if ((index < 0) || (wm->popup_menu.items_num <= index)) {
+        return;
+    }
+    execute(wm->popup_menu.items[index].command);
 }
 
 static void
@@ -562,8 +666,7 @@ process_event(WindowManager* wm, XEvent* e)
         process_button_press(wm, &e->xbutton);
     }
     else if (e->type == ButtonRelease) {
-        unmap_popup_menu(wm);
-        release_frame(wm);
+        process_button_release(wm, &e->xbutton);
     }
     else if (e->type == DestroyNotify) {
         process_destroy_notify(wm, &e->xdestroywindow);
@@ -580,17 +683,48 @@ process_event(WindowManager* wm, XEvent* e)
     }
 }
 
-static Window
-create_popup_menu(WindowManager* wm)
+static void
+change_popup_menu_event_mask(WindowManager* wm, Window w)
+{
+    XSetWindowAttributes swa;
+    swa.event_mask = ExposureMask;
+    XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
+}
+
+static void
+init_popup_menu(WindowManager* wm)
 {
     Display* display = wm->display;
     int screen = DefaultScreen(display);
-    return XCreateSimpleWindow(
+    Window w = XCreateSimpleWindow(
         display, DefaultRootWindow(display),
         0, 0,
-        256, 256,
+        42, 42, /* They are dummy. They will be defined after. */
         wm->border_size,
         BlackPixel(display, screen), WhitePixel(display, screen));
+    change_popup_menu_event_mask(wm, w);
+    wm->popup_menu.window = w;
+
+    XFontStruct* font = load_font(wm);
+    /* FIXME: Do not assert. load_font() can fail usually. */
+    assert(font != NULL);
+    wm->popup_menu.font_gc = create_font_gc(wm, w, font);
+    wm->popup_menu.font_height = font->ascent + font->descent;
+    wm->popup_menu.font_descent = font->descent;
+    int font_width = font->max_bounds.width;
+    XFreeFont(display, font);
+
+    wm->popup_menu.items_num = array_sizeof(wm->popup_menu.items);
+    strcpy(wm->popup_menu.items[0].caption, "Firefox");
+    strcpy(wm->popup_menu.items[0].command, "firefox");
+    strcpy(wm->popup_menu.items[1].caption, "mlterm");
+    strcpy(wm->popup_menu.items[1].command, "mlterm");
+    strcpy(wm->popup_menu.items[2].caption, "exit");
+    strcpy(wm->popup_menu.items[2].command, "exit");
+
+    int width = font_width * strlen(popup_title);
+    int height = wm->popup_menu.font_height * (wm->popup_menu.items_num + 1);
+    XResizeWindow(display, w, width, height);
 }
 
 static void
@@ -603,7 +737,7 @@ setup_window_manager(WindowManager* wm, Display* display)
     wm->title_height = 16;
     setup_frame_list(wm);
     release_frame(wm);
-    wm->popup_menu = create_popup_menu(wm);
+    init_popup_menu(wm);
 }
 
 static void
