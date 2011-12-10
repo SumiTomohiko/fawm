@@ -13,6 +13,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <X11/Xft/Xft.h>
 
 #include <uwm/bitmaps/close>
 
@@ -22,7 +23,7 @@ struct Frame {
     Window window;
     Window child;
     Pixmap close_icon;
-    GC title_font_gc;
+    XftDraw* draw;
 };
 
 typedef struct Frame Frame;
@@ -40,20 +41,25 @@ typedef enum GraspedPosition GraspedPosition;
 
 struct WindowManager {
     Display* display;
+
     unsigned long focused_foreground_color;
     int border_size;
     int frame_size;
     int title_height;
+
     Frame* frames;
+
     GraspedPosition grasped_position;
     Window grasped_frame;
     int grasped_x;
     int grasped_y;
+
+    XftFont* title_font;
+    XftColor title_color;
+
     struct {
         Window window;
-        GC font_gc;
-        int font_height;
-        int font_descent;
+        XftDraw* draw;
         int items_num;
         struct {
             char caption[32];
@@ -142,15 +148,22 @@ get_window_name(WindowManager* wm, char* dest, int size, Window w)
 }
 
 static void
+draw_title_font_string(WindowManager* wm, XftDraw* draw, int x, int y, const char* text)
+{
+    XftColor* color = &wm->title_color;
+    XftFont* font = wm->title_font;
+    XftDrawStringUtf8(draw, color, font, x, y, (XftChar8*)text, strlen(text));
+}
+
+static void
 draw_title_text(WindowManager* wm, Frame* frame)
 {
     char text[64];
     get_window_name(wm, text, array_sizeof(text), frame->child);
     int frame_size = wm->frame_size;
-    XDrawString(
-        wm->display, frame->window, frame->title_font_gc,
-        frame_size, frame_size + wm->title_height,
-        text, strlen(text));
+    int x = frame_size;
+    int y = frame_size + wm->title_height;
+    draw_title_font_string(wm, frame->draw, x, y, text);
 }
 
 static void
@@ -211,35 +224,14 @@ compute_frame_height(WindowManager* wm)
     return wm->title_height + 3 * wm->frame_size;
 }
 
-static XFontStruct*
-load_font(WindowManager* wm)
-{
-    const char* name = "-vlgothic-vl_pgothic-medium-i-normal--0-0-0-0-p-0-iso10646-1";
-    return XLoadQueryFont(wm->display, name);
-}
-
-static GC
-create_font_gc(WindowManager* wm, Window w, XFontStruct* font)
+static XftDraw*
+create_draw(WindowManager* wm, Window w)
 {
     Display* display = wm->display;
-    XGCValues gcv;
-    gcv.foreground = BlackPixel(display, DefaultScreen(display));
-    gcv.font = font->fid;
-    return XCreateGC(display, w, GCFont | GCForeground, &gcv);
-}
-
-static GC
-load_font_gc(WindowManager* wm, Window w)
-{
-    Display* display = wm->display;
-    XFontStruct* font = load_font(wm);
-    if (font == NULL) {
-        print_error("XLoadQueryFont failed.");
-        return DefaultGC(display, DefaultScreen(display));
-    }
-    GC gc = create_font_gc(wm, w, font);
-    XFreeFont(display, font);
-    return gc;
+    int screen = DefaultScreen(display);
+    Visual* visual = DefaultVisual(display, screen);
+    Colormap colormap = DefaultColormap(display, screen);
+    return XftDrawCreate(display, w, visual, colormap);
 }
 
 static Frame*
@@ -266,7 +258,8 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
         close_width, close_height,
         BlackPixel(display, screen), wm->focused_foreground_color,
         DefaultDepth(display, screen));
-    frame->title_font_gc = load_font_gc(wm, w);
+    frame->draw = create_draw(wm, w);
+    assert(frame->draw != NULL);
 
     insert_frame(wm, frame);
 
@@ -336,23 +329,12 @@ remove_frame(WindowManager* wm, Frame* frame)
 }
 
 static void
-free_gc(WindowManager* wm, GC gc)
-{
-    Display* display = wm->display;
-    if (gc == DefaultGC(display, DefaultScreen(display))) {
-        return;
-    }
-    XFreeGC(display, gc);
-}
-
-static void
 free_frame(WindowManager* wm, Frame* frame)
 {
     remove_frame(wm, frame);
 
-    Display* display = wm->display;
-    free_gc(wm, frame->title_font_gc);
-    XFreePixmap(display, frame->close_icon);
+    XftDrawDestroy(frame->draw);
+    XFreePixmap(wm->display, frame->close_icon);
 
     memset(frame, 0xfd, sizeof(*frame));
     free(frame);
@@ -563,19 +545,26 @@ get_last_event(WindowManager* wm, Window w, int event_type, XEvent* e)
 
 const char* popup_title = "Applications";
 
+static int
+compute_font_height(XftFont* font)
+{
+    return font->ascent + font->descent;
+}
+
 static void
 draw_popup_menu(WindowManager* wm)
 {
-    Display* display = wm->display;
-    Window w = wm->popup_menu.window;
-    GC gc = wm->popup_menu.font_gc;
-    int y = wm->popup_menu.font_height - wm->popup_menu.font_descent;
-    XDrawString(display, w, gc, 0, y, popup_title, strlen(popup_title));
+    XftDraw* draw = wm->popup_menu.draw;
+    int x = 0;
+    XftFont* font = wm->title_font;
+    int y = font->ascent;
+    draw_title_font_string(wm, draw, x, y, popup_title);
     int i;
+    int height = font->ascent + font->descent;
     for (i = 0; i < wm->popup_menu.items_num; i++) {
-        y += wm->popup_menu.font_height;
+        y += height;
         const char* text = wm->popup_menu.items[i].caption;
-        XDrawString(display, w, gc, 0, y, text, strlen(text));
+        draw_title_font_string(wm, draw, x, y, text);
     }
 }
 
@@ -652,7 +641,7 @@ process_button_release(WindowManager* wm, XButtonEvent* e)
     if (!is_region_inside(wa.x, wa.y, wa.width, wa.height, x, y)) {
         return;
     }
-    int index = (y - wa.y) / wm->popup_menu.font_height - 1;
+    int index = (y - wa.y) / compute_font_height(wm->title_font) - 1;
     if ((index < 0) || (wm->popup_menu.items_num <= index)) {
         return;
     }
@@ -705,14 +694,8 @@ init_popup_menu(WindowManager* wm)
     change_popup_menu_event_mask(wm, w);
     wm->popup_menu.window = w;
 
-    XFontStruct* font = load_font(wm);
-    /* FIXME: Do not assert. load_font() can fail usually. */
-    assert(font != NULL);
-    wm->popup_menu.font_gc = create_font_gc(wm, w, font);
-    wm->popup_menu.font_height = font->ascent + font->descent;
-    wm->popup_menu.font_descent = font->descent;
-    int font_width = font->max_bounds.width;
-    XFreeFont(display, font);
+    wm->popup_menu.draw = create_draw(wm, w);
+    assert(wm->popup_menu.draw != NULL);
 
     wm->popup_menu.items_num = array_sizeof(wm->popup_menu.items);
     strcpy(wm->popup_menu.items[0].caption, "Firefox");
@@ -722,9 +705,32 @@ init_popup_menu(WindowManager* wm)
     strcpy(wm->popup_menu.items[2].caption, "exit");
     strcpy(wm->popup_menu.items[2].command, "exit");
 
-    int width = font_width * strlen(popup_title);
-    int height = wm->popup_menu.font_height * (wm->popup_menu.items_num + 1);
+    XftFont* font = wm->title_font;
+    int width = font->max_advance_width * strlen(popup_title);
+    int font_height = compute_font_height(font);
+    int height = font_height * (wm->popup_menu.items_num + 1);
     XResizeWindow(display, w, width, height);
+}
+
+static void
+init_title_font(WindowManager* wm)
+{
+    Display* display = wm->display;
+    int screen = DefaultScreen(display);
+    const char* name = "VL PGothic-18";
+    XftFont* title_font = XftFontOpenName(display, screen, name);
+    if (title_font == NULL) {
+        print_error("Cannot find font (XftFontOpenName failed): %s", name);
+        exit(1);
+    }
+    wm->title_font = title_font;
+    Visual* visual = DefaultVisual(display, screen);
+    Colormap colormap = DefaultColormap(display, screen);
+    /**
+     * XXX: I could not find a description about a mean of XftColorAllocName's
+     * return value.
+     */
+    XftColorAllocName(display, visual, colormap, "black", &wm->title_color);
 }
 
 static void
@@ -737,6 +743,7 @@ setup_window_manager(WindowManager* wm, Display* display)
     wm->title_height = 16;
     setup_frame_list(wm);
     release_frame(wm);
+    init_title_font(wm);
     init_popup_menu(wm);
 }
 
