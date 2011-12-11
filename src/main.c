@@ -207,8 +207,10 @@ static void
 insert_frame(WindowManager* wm, Frame* frame)
 {
     Frame* anchor = wm->frames;
+    Frame* next = anchor->next;
+    next->prev = frame;
     frame->prev = anchor;
-    frame->next = anchor->next;
+    frame->next = next;
     anchor->next = frame;
 }
 
