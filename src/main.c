@@ -296,6 +296,12 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
 }
 
 static void
+focus(WindowManager* wm, Window w)
+{
+    XSetInputFocus(wm->display, w, RevertToNone, CurrentTime);
+}
+
+static void
 reparent_window(WindowManager* wm, Window w)
 {
     Display* display = wm->display;
@@ -310,6 +316,7 @@ reparent_window(WindowManager* wm, Window w)
     XReparentWindow(display, w, frame->window, x, y);
     XMapWindow(display, frame->window);
     XMapWindow(display, w);
+    focus(wm, frame->child);
     XAddToSaveSet(display, w);
 }
 
@@ -467,7 +474,7 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         return;
     }
     XRaiseWindow(display, w);
-    XSetInputFocus(display, frame->child, RevertToNone, CurrentTime);
+    focus(wm, frame->child);
     XWindowAttributes wa;
     XGetWindowAttributes(display, w, &wa);
     int width = wa.width;
