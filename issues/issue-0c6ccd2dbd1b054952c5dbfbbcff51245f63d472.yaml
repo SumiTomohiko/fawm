@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Firefox cannot get focus even when its client area is clicked.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-11 13:20:36.699483 Z
+references: []
+
+id: 0c6ccd2dbd1b054952c5dbfbbcff51245f63d472
+log_events: 
+- - 2011-12-11 13:20:37.571274 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
