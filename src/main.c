@@ -66,6 +66,8 @@ struct WindowManager {
             char command[32];
         } items[3];
     } popup_menu;
+
+    FILE* log_file; /* For debug */
 };
 
 typedef struct WindowManager WindowManager;
@@ -73,14 +75,38 @@ typedef struct WindowManager WindowManager;
 #define array_sizeof(x) (sizeof((x)) / sizeof((x)[0]))
 
 static void
-print_error(const char* msg, ...)
+print_message(FILE* fp, const char* fmt, va_list ap)
+{
+    char buf[128];
+    vsnprintf(buf, array_sizeof(buf), fmt, ap);
+    fprintf(fp, "%s\n", buf);
+}
+
+static void
+output_log(WindowManager* wm, const char* fmt, ...)
+{
+    if (wm->log_file == NULL) {
+        return;
+    }
+    va_list ap;
+    va_start(ap, fmt);
+    print_message(wm->log_file, fmt, ap);
+    va_end(ap);
+}
+
+#define LOG_HEAD_FMT "%s:%u:%u "
+#define LOG_HEAD __FILE__, __LINE__, getpid()
+#define LOG(wm, fmt, ...) \
+    output_log(wm, LOG_HEAD_FMT fmt, LOG_HEAD, __VA_ARGS__)
+#define LOG0(wm, msg) output_log(wm, LOG_HEAD_FMT msg, LOG_HEAD)
+
+static void
+print_error(const char* fmt, ...)
 {
     va_list ap;
-    va_start(ap, msg);
-    char buf[64];
-    vsnprintf(buf, array_sizeof(buf), msg, ap);
+    va_start(ap, fmt);
+    print_message(stderr, fmt, ap);
     va_end(ap);
-    fprintf(stderr, "%s\n", buf);
 }
 
 static Bool
@@ -654,23 +680,34 @@ static void
 process_event(WindowManager* wm, XEvent* e)
 {
     if (e->type == ButtonPress) {
-        process_button_press(wm, &e->xbutton);
+        XButtonEvent* ev = &e->xbutton;
+        LOG(wm, "ButtonPress: window=0x%08x", ev->window);
+        process_button_press(wm, ev);
     }
     else if (e->type == ButtonRelease) {
+        XButtonEvent* ev = &e->xbutton;
+        LOG(wm, "ButtonPress: window=0x%08x", ev->window);
         process_button_release(wm, &e->xbutton);
     }
     else if (e->type == DestroyNotify) {
-        process_destroy_notify(wm, &e->xdestroywindow);
+        XDestroyWindowEvent* ev = &e->xdestroywindow;
+        LOG(wm, "DestroyNotify: window=0x%08x", ev->window);
+        process_destroy_notify(wm, ev);
     }
     else if (e->type == Expose) {
-        process_expose(wm, &e->xexpose);
+        XExposeEvent* ev = &e->xexpose;
+        LOG(wm, "Expose: window=0x%08x", ev->window);
+        process_expose(wm, ev);
     }
     else if (e->type == MotionNotify) {
         get_last_event(wm, e->xmotion.window, MotionNotify, e);
-        process_motion_notify(wm, &e->xmotion);
+        XMotionEvent* ev = &e->xmotion;
+        process_motion_notify(wm, ev);
     }
     else if (e->type == MapRequest) {
-        reparent_window(wm, e->xmaprequest.window);
+        Window w = e->xmaprequest.window;
+        LOG(wm, "MapRequest: window=0x%08x", w);
+        reparent_window(wm, w);
     }
 }
 
@@ -747,6 +784,15 @@ setup_window_manager(WindowManager* wm, Display* display)
     release_frame(wm);
     init_title_font(wm);
     init_popup_menu(wm);
+
+#if 0
+    const char* log_path = "uwm.log";
+    unlink(log_path);
+    wm->log_file = fopen(log_path, "w");
+    assert(wm->log_file != NULL);
+#else
+    wm->log_file = NULL;
+#endif
 }
 
 static void
@@ -755,7 +801,9 @@ wm_main(WindowManager* wm, Display* display)
     setup_window_manager(wm, display);
     reparent_toplevels(wm);
     long mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask | SubstructureRedirectMask;
-    XSelectInput(display, DefaultRootWindow(display), mask);
+    Window root = DefaultRootWindow(display);
+    XSelectInput(display, root, mask);
+    LOG(wm, "root window=0x%08x", root);
 
     while (1) {
         XEvent e;
