@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Nice error handler is needed.
+desc: ""
+type: :task
+component: core
+release: 
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-11 16:42:53.906132 Z
+references: []
+
+id: b17bc5174f50e0b875d94d759b696aa05ddf4830
+log_events: 
+- - 2011-12-11 16:42:54.377405 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
