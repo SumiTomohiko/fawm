@@ -43,6 +43,7 @@ struct WindowManager {
     Display* display;
 
     unsigned long focused_foreground_color;
+    unsigned long unfocused_foreground_color;
     int border_size;
     int frame_size;
     int title_height;
@@ -681,12 +682,41 @@ process_button_release(WindowManager* wm, XButtonEvent* e)
 }
 
 static void
+clear_window(WindowManager* wm, Window w)
+{
+    XClearWindow(wm->display, w);
+    draw_frame(wm, w);
+}
+
+static void
+change_frame_background(WindowManager* wm, Window w, int pixel)
+{
+    XSetWindowBackground(wm->display, w, pixel);
+    clear_window(wm, w);
+}
+
+static void
+process_focus_out(WindowManager* wm, XFocusChangeEvent* e)
+{
+    if (e->mode != NotifyNormal) {
+        return;
+    }
+    int detail = e->detail;
+    if ((detail != NotifyVirtual) && (detail != NotifyNonlinearVirtual)) {
+        return;
+    }
+    change_frame_background(wm, e->window, wm->unfocused_foreground_color);
+}
+
+static void
 process_focus_in(WindowManager* wm, XFocusChangeEvent* e)
 {
     if ((e->mode != NotifyNormal) || (e->detail != NotifyNonlinearVirtual)) {
         return;
     }
-    XRaiseWindow(wm->display, e->window);
+    Window w = e->window;
+    XRaiseWindow(wm->display, w);
+    change_frame_background(wm, w, wm->focused_foreground_color);
 }
 
 static void
@@ -716,6 +746,11 @@ process_event(WindowManager* wm, XEvent* e)
         XFocusChangeEvent* ev = &e->xfocus;
         LOG(wm, "FocusIn: window=0x%08x", ev->window);
         process_focus_in(wm, ev);
+    }
+    else if (e->type == FocusOut) {
+        XFocusChangeEvent* ev = &e->xfocus;
+        LOG(wm, "FocusOut: window=0x%08x", ev->window);
+        process_focus_out(wm, ev);
     }
     else if (e->type == MotionNotify) {
         get_last_event(wm, e->xmotion.window, MotionNotify, e);
@@ -795,6 +830,7 @@ setup_window_manager(WindowManager* wm, Display* display)
 {
     wm->display = display;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
+    wm->unfocused_foreground_color = alloc_color(wm, "grey");
     wm->border_size = 1;
     wm->frame_size = 4;
     wm->title_height = 16;
