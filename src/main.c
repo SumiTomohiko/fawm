@@ -82,6 +82,7 @@ print_message(FILE* fp, const char* fmt, va_list ap)
     char buf[128];
     vsnprintf(buf, array_sizeof(buf), fmt, ap);
     fprintf(fp, "%s\n", buf);
+    fflush(fp);
 }
 
 static void
@@ -752,7 +753,7 @@ process_event(WindowManager* wm, XEvent* e)
     }
     else if (e->type == DestroyNotify) {
         XDestroyWindowEvent* ev = &e->xdestroywindow;
-        LOG(wm, "DestroyNotify: window=0x%08x", ev->window);
+        LOG(wm, "DestroyNotify: window=0x%08x, event=0x%08x", ev->window, ev->event);
         process_destroy_notify(wm, ev);
     }
     else if (e->type == Expose) {
