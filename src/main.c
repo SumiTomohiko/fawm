@@ -24,6 +24,7 @@ struct Frame {
     Window child;
     Pixmap close_icon;
     XftDraw* draw;
+    char title[64];
 };
 
 typedef struct Frame Frame;
@@ -185,12 +186,10 @@ draw_title_font_string(WindowManager* wm, XftDraw* draw, int x, int y, const cha
 static void
 draw_title_text(WindowManager* wm, Frame* frame)
 {
-    char text[64];
-    get_window_name(wm, text, array_sizeof(text), frame->child);
     int frame_size = wm->frame_size;
     int x = frame_size;
     int y = frame_size + wm->title_height;
-    draw_title_font_string(wm, frame->draw, x, y, text);
+    draw_title_font_string(wm, frame->draw, x, y, frame->title);
 }
 
 static void
@@ -309,6 +308,7 @@ reparent_window(WindowManager* wm, Window w)
     XGetWindowAttributes(display, w, &wa);
     Frame* frame = create_frame(wm, wa.x, wa.y, wa.width, wa.height);
     frame->child = w;
+    get_window_name(wm, frame->title, array_sizeof(frame->title), w);
     int frame_size = wm->frame_size;
     int x = frame_size;
     int y = 2 * frame_size + wm->title_height;
@@ -702,6 +702,12 @@ change_frame_background(WindowManager* wm, Window w, int pixel)
     clear_window(wm, w);
 }
 
+static Bool
+is_alive_frame(WindowManager* wm, Window w)
+{
+    return search_frame(wm, w) != NULL;
+}
+
 static void
 process_focus_out(WindowManager* wm, XFocusChangeEvent* e)
 {
@@ -712,7 +718,12 @@ process_focus_out(WindowManager* wm, XFocusChangeEvent* e)
     if ((detail != NotifyVirtual) && (detail != NotifyNonlinearVirtual)) {
         return;
     }
-    change_frame_background(wm, e->window, wm->unfocused_foreground_color);
+    Window w = e->window;
+    if (!is_alive_frame(wm, w)) {
+        /* XXX: X seems to throw FocusOut event for XDestroyWindow'ed window? */
+        return;
+    }
+    change_frame_background(wm, w, wm->unfocused_foreground_color);
 }
 
 static void
