@@ -453,8 +453,10 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         map_popup_menu(wm, e->x, e->y);
         return;
     }
+    XRaiseWindow(display, w);
     Frame* frame = search_frame(wm, w);
     assert(frame != NULL);
+    XSetInputFocus(display, frame->child, RevertToNone, CurrentTime);
     int frame_size = wm->frame_size;
     int close_x = compute_close_icon_x(wm, w);
     int close_y = wm->border_size + frame_size;
