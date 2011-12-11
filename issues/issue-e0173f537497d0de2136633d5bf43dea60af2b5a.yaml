@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: No window gets focus when a focused window is destroyed.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-11 15:36:29.199078 Z
+references: []
+
+id: e0173f537497d0de2136633d5bf43dea60af2b5a
+log_events: 
+- - 2011-12-11 15:36:29.957709 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
