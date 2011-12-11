@@ -207,7 +207,7 @@ static void
 change_frame_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
-    swa.event_mask = ButtonMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | SubstructureNotifyMask;
+    swa.event_mask = ButtonMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | SubstructureNotifyMask;
     XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
 }
 
@@ -453,10 +453,8 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         map_popup_menu(wm, e->x, e->y);
         return;
     }
-    XRaiseWindow(display, w);
     Frame* frame = search_frame(wm, w);
     assert(frame != NULL);
-    XSetInputFocus(display, frame->child, RevertToNone, CurrentTime);
     int frame_size = wm->frame_size;
     int close_x = compute_close_icon_x(wm, w);
     int close_y = wm->border_size + frame_size;
@@ -467,6 +465,8 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         destroy_frame(wm, frame);
         return;
     }
+    XRaiseWindow(display, w);
+    XSetInputFocus(display, frame->child, RevertToNone, CurrentTime);
     XWindowAttributes wa;
     XGetWindowAttributes(display, w, &wa);
     int width = wa.width;
@@ -681,6 +681,15 @@ process_button_release(WindowManager* wm, XButtonEvent* e)
 }
 
 static void
+process_focus_in(WindowManager* wm, XFocusChangeEvent* e)
+{
+    if ((e->mode != NotifyNormal) || (e->detail != NotifyNonlinearVirtual)) {
+        return;
+    }
+    XRaiseWindow(wm->display, e->window);
+}
+
+static void
 process_event(WindowManager* wm, XEvent* e)
 {
     if (e->type == ButtonPress) {
@@ -702,6 +711,11 @@ process_event(WindowManager* wm, XEvent* e)
         XExposeEvent* ev = &e->xexpose;
         LOG(wm, "Expose: window=0x%08x", ev->window);
         process_expose(wm, ev);
+    }
+    else if (e->type == FocusIn) {
+        XFocusChangeEvent* ev = &e->xfocus;
+        LOG(wm, "FocusIn: window=0x%08x", ev->window);
+        process_focus_in(wm, ev);
     }
     else if (e->type == MotionNotify) {
         get_last_event(wm, e->xmotion.window, MotionNotify, e);
