@@ -369,11 +369,11 @@ free_frame(WindowManager* wm, Frame* frame)
 }
 
 static void
-destroy_frame(WindowManager* wm, Window w)
+destroy_frame(WindowManager* wm, Frame* frame)
 {
-    Frame* frame = search_frame(wm, w);
-    assert(frame != NULL);
-    XKillClient(wm->display, frame->child);
+    Window w = frame->window;
+    free_frame(wm, frame);
+    XDestroyWindow(wm->display, w);
 }
 
 static void
@@ -384,8 +384,7 @@ process_destroy_notify(WindowManager* wm, XDestroyWindowEvent* e)
     if (frame == NULL) {
         return;
     }
-    free_frame(wm, frame);
-    XDestroyWindow(wm->display, w);
+    destroy_frame(wm, frame);
 }
 
 static void
@@ -454,17 +453,20 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         map_popup_menu(wm, e->x, e->y);
         return;
     }
+    Frame* frame = search_frame(wm, w);
+    assert(frame != NULL);
     int frame_size = wm->frame_size;
     int close_x = compute_close_icon_x(wm, w);
     int close_y = wm->border_size + frame_size;
     int x = e->x;
     int y = e->y;
     if (is_region_inside(close_x, close_y, close_width, close_height, x, y)) {
-        destroy_frame(wm, w);
+        XKillClient(display, frame->child);
+        destroy_frame(wm, frame);
         return;
     }
     XWindowAttributes wa;
-    XGetWindowAttributes(wm->display, w, &wa);
+    XGetWindowAttributes(display, w, &wa);
     int width = wa.width;
     int height = wa.height;
     if (is_region_inside(0, 0, width, frame_size, x, y)) {
