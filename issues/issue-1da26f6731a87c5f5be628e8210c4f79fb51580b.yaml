@@ -1,9 +1,9 @@
 --- !ditz.rubyforge.org,2008-03-06/issue 
-title: Show png image as close icon?
+title: Show png image as close icon.
 desc: ""
 type: :task
 component: core
-release: 
+release: 0.1.0
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
 status: :unstarted
 disposition: 
@@ -15,4 +15,12 @@ log_events:
 - - 2011-12-10 16:20:44.803661 Z
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - created
+  - ""
+- - 2011-12-11 17:17:19.478830 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - assigned to release 0.1.0 from unassigned
+  - ""
+- - 2011-12-11 17:17:39.786258 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - edited title
   - ""
