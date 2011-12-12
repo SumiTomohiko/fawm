@@ -5,8 +5,8 @@ type: :task
 component: core
 release: 0.1.0
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
-status: :unstarted
-disposition: 
+status: :closed
+disposition: :wontfix
 creation_time: 2011-12-10 16:20:44.198682 Z
 references: []
 
@@ -24,3 +24,7 @@ log_events:
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - edited title
   - ""
+- - 2011-12-12 14:28:38.177862 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - closed with disposition wontfix
+  - png is not needed.
