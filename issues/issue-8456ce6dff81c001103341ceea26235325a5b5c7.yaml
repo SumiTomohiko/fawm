@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Window can move only with clicking a title bar.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-12 16:13:41.062624 Z
+references: []
+
+id: 8456ce6dff81c001103341ceea26235325a5b5c7
+log_events: 
+- - 2011-12-12 16:13:42.163700 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
