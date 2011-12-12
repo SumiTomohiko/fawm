@@ -4,6 +4,9 @@ WAF = ./waf
 all:
 	$(WAF) build
 
+configure:
+	$(WAF) configure
+
 install:
 	$(WAF) install
 
