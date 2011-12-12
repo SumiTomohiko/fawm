@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Accept requets of child window's initial size/position.
+desc: These requests come in form of WM_XXX ClientMessage probably.
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-12 02:36:12.951628 Z
+references: []
+
+id: c9628054e40598f197cd6afbf7afcba45404bb77
+log_events: 
+- - 2011-12-12 02:36:14.966653 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
