@@ -66,6 +66,7 @@ struct WindowManager {
 
     struct {
         Window window;
+        GC title_gc;
         XftDraw* draw;
         int items_num;
         struct {
@@ -724,15 +725,23 @@ compute_font_height(XftFont* font)
 static void
 draw_popup_menu(WindowManager* wm)
 {
+    Window w = wm->popup_menu.window;
+    unsigned int window_width;
+    unsigned int _;
+    get_geometry(wm, w, &window_width, &_);
+    Display* display = wm->display;
+    GC gc = wm->popup_menu.title_gc;
+    XftFont* font = wm->title_font;
+    int item_height = font->ascent + font->descent;
+    XFillRectangle(display, w, gc, 0, 0, window_width, item_height);
+
     XftDraw* draw = wm->popup_menu.draw;
     int x = 0;
-    XftFont* font = wm->title_font;
     int y = font->ascent;
     draw_title_font_string(wm, draw, x, y, popup_title);
     int i;
-    int height = font->ascent + font->descent;
     for (i = 0; i < wm->popup_menu.items_num; i++) {
-        y += height;
+        y += item_height;
         const char* text = wm->popup_menu.items[i].caption;
         draw_title_font_string(wm, draw, x, y, text);
     }
@@ -933,6 +942,10 @@ init_popup_menu(WindowManager* wm)
         BlackPixel(display, screen), WhitePixel(display, screen));
     change_popup_menu_event_mask(wm, w);
     wm->popup_menu.window = w;
+
+    XGCValues title_gc;
+    title_gc.foreground = wm->focused_foreground_color;
+    wm->popup_menu.title_gc = XCreateGC(display, w, GCForeground, &title_gc);
 
     wm->popup_menu.draw = create_draw(wm, w);
     assert(wm->popup_menu.draw != NULL);
