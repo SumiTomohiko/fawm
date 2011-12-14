@@ -15,7 +15,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xft/Xft.h>
 
-#include <uwm/bitmaps/close>
+#include <uwm/bitmaps/close_icon>
 
 struct Frame {
     struct Frame* prev;
@@ -141,7 +141,7 @@ compute_close_icon_x(WindowManager* wm, Window w)
 {
     XWindowAttributes wa;
     XGetWindowAttributes(wm->display, w, &wa);
-    return wa.width - wm->frame_size - close_width;
+    return wa.width - wm->frame_size - close_icon_width;
 }
 
 static void
@@ -155,7 +155,7 @@ draw_close_icon(WindowManager* wm, Frame* frame)
         w,
         DefaultGC(display, DefaultScreen(display)),
         0, 0,
-        close_width, close_height,
+        close_icon_width, close_icon_height,
         compute_close_icon_x(wm, w), wm->frame_size);
 }
 
@@ -332,8 +332,8 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
     frame->close_icon = XCreatePixmapFromBitmapData(
         display,
         w,
-        (char*)close_bits,
-        close_width, close_height,
+        (char*)close_icon_bits,
+        close_icon_width, close_icon_height,
         BlackPixel(display, screen), wm->focused_foreground_color,
         DefaultDepth(display, screen));
     frame->draw = create_draw(wm, w);
@@ -582,9 +582,11 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
     int frame_size = wm->frame_size;
     int close_x = compute_close_icon_x(wm, w);
     int close_y = wm->border_size + frame_size;
+    int width = close_icon_width;
+    int height = close_icon_height;
     int x = e->x;
     int y = e->y;
-    if (is_region_inside(close_x, close_y, close_width, close_height, x, y)) {
+    if (is_region_inside(close_x, close_y, width, height, x, y)) {
         XKillClient(display, frame->child);
         destroy_frame(wm, frame);
         return;
