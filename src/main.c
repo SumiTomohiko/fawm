@@ -920,17 +920,10 @@ process_button_release(WindowManager* wm, XButtonEvent* e)
 }
 
 static void
-clear_frame(WindowManager* wm, Window w)
-{
-    XClearWindow(wm->display, w);
-    draw_frame(wm, w);
-}
-
-static void
 change_frame_background(WindowManager* wm, Window w, int pixel)
 {
     XSetWindowBackground(wm->display, w, pixel);
-    clear_frame(wm, w);
+    expose(wm, w);
 }
 
 static Bool
