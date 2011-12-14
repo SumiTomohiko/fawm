@@ -14,6 +14,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <X11/Xft/Xft.h>
+#include <X11/cursorfont.h>
 
 #include <uwm/bitmaps/close_icon>
 
@@ -63,6 +64,16 @@ struct WindowManager {
 
     XftFont* title_font;
     XftColor title_color;
+
+    Cursor normal_cursor;
+    Cursor bottom_left_cursor;
+    Cursor bottom_right_cursor;
+    Cursor bottom_cursor;
+    Cursor left_cursor;
+    Cursor right_cursor;
+    Cursor top_left_cursor;
+    Cursor top_right_cursor;
+    Cursor top_cursor;
 
     struct {
         Window window;
@@ -257,7 +268,7 @@ static void
 change_frame_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
-    swa.event_mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | SubstructureNotifyMask;
+    swa.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | PointerMotionMask | SubstructureNotifyMask;
     XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
 }
 
@@ -680,6 +691,46 @@ highlight_selected_popup_item(WindowManager* wm, int x, int y)
 }
 
 static void
+change_cursor(WindowManager* wm, Window w, int x, int y)
+{
+    Cursor cursor;
+    switch (detect_frame_position(wm, w, x, y)) {
+    case GP_NONE:
+    case GP_TITLE_BAR:
+        cursor = wm->normal_cursor;
+        break;
+    case GP_NORTH:
+        cursor = wm->top_cursor;
+        break;
+    case GP_NORTH_EAST:
+        cursor = wm->top_right_cursor;
+        break;
+    case GP_EAST:
+        cursor = wm->right_cursor;
+        break;
+    case GP_SOUTH_EAST:
+        cursor = wm->bottom_right_cursor;
+        break;
+    case GP_SOUTH:
+        cursor = wm->bottom_cursor;
+        break;
+    case GP_SOUTH_WEST:
+        cursor = wm->bottom_left_cursor;
+        break;
+    case GP_WEST:
+        cursor = wm->left_cursor;
+        break;
+    case GP_NORTH_WEST:
+        cursor = wm->top_left_cursor;
+        break;
+    default:
+        assert(False);
+        return; /* A statement to surpress GCC warning. */
+    }
+    XDefineCursor(wm->display, w, cursor);
+}
+
+static void
 process_motion_notify(WindowManager* wm, XMotionEvent* e)
 {
     Display* display = wm->display;
@@ -688,6 +739,10 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     int y = e->y;
     if (w == DefaultRootWindow(display)) {
         highlight_selected_popup_item(wm, x, y);
+        return;
+    }
+    if ((e->state & Button1Mask) == 0) {
+        change_cursor(wm, w, x, y);
         return;
     }
 
@@ -1029,6 +1084,24 @@ init_title_font(WindowManager* wm)
 }
 
 static void
+init_cursors(WindowManager* wm)
+{
+    Display* display = wm->display;
+#define CREATE_CURSOR(member, cursor) \
+    wm->member = XCreateFontCursor(display, cursor)
+    CREATE_CURSOR(normal_cursor, XC_X_cursor);
+    CREATE_CURSOR(bottom_left_cursor, XC_bottom_left_corner);
+    CREATE_CURSOR(bottom_right_cursor, XC_bottom_right_corner);
+    CREATE_CURSOR(bottom_cursor, XC_bottom_side);
+    CREATE_CURSOR(left_cursor, XC_left_side);
+    CREATE_CURSOR(right_cursor, XC_right_side);
+    CREATE_CURSOR(top_left_cursor, XC_top_left_corner);
+    CREATE_CURSOR(top_right_cursor, XC_top_right_corner);
+    CREATE_CURSOR(top_cursor, XC_top_side);
+#undef CREATE_CURSOR
+}
+
+static void
 setup_window_manager(WindowManager* wm, Display* display)
 {
     wm->display = display;
@@ -1041,6 +1114,7 @@ setup_window_manager(WindowManager* wm, Display* display)
     setup_frame_list(wm);
     release_frame(wm);
     init_title_font(wm);
+    init_cursors(wm);
     init_popup_menu(wm);
 
 #if 0
