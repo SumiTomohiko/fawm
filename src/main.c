@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <X11/Xlib.h>
@@ -90,6 +91,8 @@ struct WindowManager {
 
     struct {
         Window window;
+        XftDraw* draw;
+        time_t clock;
     } taskbar;
 
     FILE* log_file; /* For debug */
@@ -852,11 +855,32 @@ get_last_event(WindowManager* wm, Window w, int event_type, XEvent* e)
 }
 
 static void
+draw_taskbar(WindowManager* wm)
+{
+    time_t now;
+    time(&now);
+    struct tm tm;
+    localtime_r(&now, &tm);
+    char text[64];
+    strftime(text, array_sizeof(text), "%Y-%m-%dT%H:%M", &tm);
+
+    XftDraw* draw = wm->taskbar.draw;
+    XftColor* color = &wm->title_color;
+    XftFont* font = wm->title_font;
+    int y = font->ascent;
+    XftDrawStringUtf8(draw, color, font, 0, y, (XftChar8*)text, strlen(text));
+}
+
+static void
 process_expose(WindowManager* wm, XExposeEvent* e)
 {
     Window w = e->window;
     if (w == wm->popup_menu.window) {
         draw_popup_menu(wm);
+        return;
+    }
+    if (w == wm->taskbar.window) {
+        draw_taskbar(wm);
         return;
     }
     if (e->x == wm->frame_size) {
@@ -1011,11 +1035,23 @@ process_event(WindowManager* wm, XEvent* e)
 }
 
 static void
-change_popup_menu_event_mask(WindowManager* wm, Window w)
+change_event_mask_exposure(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
     swa.event_mask = ExposureMask;
     XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
+}
+
+static void
+change_taskbar_event_mask(WindowManager* wm, Window w)
+{
+    change_event_mask_exposure(wm, w);
+}
+
+static void
+change_popup_menu_event_mask(WindowManager* wm, Window w)
+{
+    change_event_mask_exposure(wm, w);
 }
 
 static void
@@ -1116,7 +1152,10 @@ setup_taskbar(WindowManager* wm)
         root_width, font_height,
         border_size,
         BlackPixel(display, screen), wm->unfocused_foreground_color);
+    change_taskbar_event_mask(wm, w);
     wm->taskbar.window = w;
+    wm->taskbar.draw = create_draw(wm, w);
+    wm->taskbar.clock = -1;
 }
 
 static void
@@ -1158,6 +1197,16 @@ wm_main(WindowManager* wm, Display* display)
     LOG(wm, "root window=0x%08x", root);
 
     while (1) {
+        if (XPending(display) == 0) {
+            time_t now;
+            time(&now);
+            if (wm->taskbar.clock / 60 != now / 60) {
+                expose(wm, wm->taskbar.window);
+                wm->taskbar.clock = now;
+            }
+            continue;
+        }
+
         XEvent e;
         XNextEvent(display, &e);
         process_event(wm, &e);
