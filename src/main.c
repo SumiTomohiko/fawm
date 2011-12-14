@@ -67,8 +67,10 @@ struct WindowManager {
     struct {
         Window window;
         GC title_gc;
+        GC selected_gc;
         XftDraw* draw;
         int items_num;
+        int selected_item;
         struct {
             char caption[32];
             char command[32];
@@ -255,7 +257,7 @@ static void
 change_frame_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
-    swa.event_mask = ButtonMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | SubstructureNotifyMask;
+    swa.event_mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | SubstructureNotifyMask;
     XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
 }
 
@@ -606,15 +608,91 @@ resize_child(WindowManager* wm, Window w, int frame_width, int frame_height)
     XResizeWindow(wm->display, w, width, height);
 }
 
+static int
+compute_font_height(XftFont* font)
+{
+    return font->ascent + font->descent;
+}
+
+static int
+detect_selected_popup_item(WindowManager* wm, int x, int y)
+{
+    XWindowAttributes wa;
+    XGetWindowAttributes(wm->display, wm->popup_menu.window, &wa);
+    if (!is_region_inside(wa.x, wa.y, wa.width, wa.height, x, y)) {
+        return -1;
+    }
+    int index = (y - wa.y) / compute_font_height(wm->title_font) - 1;
+    return wm->popup_menu.items_num <= index ? -1 : index;
+}
+
+const char* popup_title = "Applications";
+
+static void
+draw_popup_menu(WindowManager* wm)
+{
+    Display* display = wm->display;
+    Window w = wm->popup_menu.window;
+    GC title_gc = wm->popup_menu.title_gc;
+    unsigned int window_width;
+    unsigned int _;
+    get_geometry(wm, w, &window_width, &_);
+    XftFont* font = wm->title_font;
+    int item_height = font->ascent + font->descent;
+    XFillRectangle(display, w, title_gc, 0, 0, window_width, item_height);
+
+    int x = 0;
+    int selected_item = wm->popup_menu.selected_item;
+    int y = item_height * (selected_item + 1);
+    if (0 <= selected_item) {
+        GC gc = wm->popup_menu.selected_gc;
+        XFillRectangle(display, w, gc, x, y, window_width, item_height);
+    }
+
+    XftDraw* draw = wm->popup_menu.draw;
+    y = font->ascent;
+    draw_title_font_string(wm, draw, x, y, popup_title);
+    int i;
+    for (i = 0; i < wm->popup_menu.items_num; i++) {
+        y += item_height;
+        const char* text = wm->popup_menu.items[i].caption;
+        draw_title_font_string(wm, draw, x, y, text);
+    }
+}
+
+static void
+expose(WindowManager* wm, Window w)
+{
+    XClearArea(wm->display, w, 0, 0, 0, 0, True);
+}
+
+static void
+highlight_selected_popup_item(WindowManager* wm, int x, int y)
+{
+    int new_item = detect_selected_popup_item(wm, x, y);
+    if (new_item == wm->popup_menu.selected_item) {
+        return;
+    }
+    wm->popup_menu.selected_item = new_item;
+    expose(wm, wm->popup_menu.window);
+}
+
 static void
 process_motion_notify(WindowManager* wm, XMotionEvent* e)
 {
+    Display* display = wm->display;
+    Window w = e->window;
+    int x = e->x;
+    int y = e->y;
+    if (w == DefaultRootWindow(display)) {
+        highlight_selected_popup_item(wm, x, y);
+        return;
+    }
+
     GraspedPosition pos = wm->grasped_position;
     if (pos == GP_NONE) {
         return;
     }
-    Display* display = wm->display;
-    Window w = e->window;
     int border_size = wm->border_size;
     int new_x = e->x_root - wm->grasped_x - border_size;
     int new_y = e->y_root - wm->grasped_y - border_size;
@@ -629,8 +707,6 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     Window child = frame->child;
     XWindowAttributes child_attrs;
     XGetWindowAttributes(display, child, &child_attrs);
-    int x = e->x;
-    int y = e->y;
     int new_width;
     int new_height;
     switch (wm->grasped_position) {
@@ -714,39 +790,6 @@ get_last_event(WindowManager* wm, Window w, int event_type, XEvent* e)
     while (XCheckTypedWindowEvent(display, w, event_type, e));
 }
 
-const char* popup_title = "Applications";
-
-static int
-compute_font_height(XftFont* font)
-{
-    return font->ascent + font->descent;
-}
-
-static void
-draw_popup_menu(WindowManager* wm)
-{
-    Window w = wm->popup_menu.window;
-    unsigned int window_width;
-    unsigned int _;
-    get_geometry(wm, w, &window_width, &_);
-    Display* display = wm->display;
-    GC gc = wm->popup_menu.title_gc;
-    XftFont* font = wm->title_font;
-    int item_height = font->ascent + font->descent;
-    XFillRectangle(display, w, gc, 0, 0, window_width, item_height);
-
-    XftDraw* draw = wm->popup_menu.draw;
-    int x = 0;
-    int y = font->ascent;
-    draw_title_font_string(wm, draw, x, y, popup_title);
-    int i;
-    for (i = 0; i < wm->popup_menu.items_num; i++) {
-        y += item_height;
-        const char* text = wm->popup_menu.items[i].caption;
-        draw_title_font_string(wm, draw, x, y, text);
-    }
-}
-
 static void
 process_expose(WindowManager* wm, XExposeEvent* e)
 {
@@ -807,28 +850,20 @@ execute(const char* cmd)
 static void
 process_button_release(WindowManager* wm, XButtonEvent* e)
 {
-    Display* display = wm->display;
-    if (e->window != DefaultRootWindow(display)) {
+    if (e->window != DefaultRootWindow(wm->display)) {
         release_frame(wm);
         return;
     }
     unmap_popup_menu(wm);
-    XWindowAttributes wa;
-    XGetWindowAttributes(display, wm->popup_menu.window, &wa);
-    int x = e->x;
-    int y = e->y;
-    if (!is_region_inside(wa.x, wa.y, wa.width, wa.height, x, y)) {
-        return;
-    }
-    int index = (y - wa.y) / compute_font_height(wm->title_font) - 1;
-    if ((index < 0) || (wm->popup_menu.items_num <= index)) {
+    int index = detect_selected_popup_item(wm, e->x, e->y);
+    if (index < 0) {
         return;
     }
     execute(wm->popup_menu.items[index].command);
 }
 
 static void
-clear_window(WindowManager* wm, Window w)
+clear_frame(WindowManager* wm, Window w)
 {
     XClearWindow(wm->display, w);
     draw_frame(wm, w);
@@ -838,7 +873,7 @@ static void
 change_frame_background(WindowManager* wm, Window w, int pixel)
 {
     XSetWindowBackground(wm->display, w, pixel);
-    clear_window(wm, w);
+    clear_frame(wm, w);
 }
 
 static Bool
@@ -945,7 +980,12 @@ init_popup_menu(WindowManager* wm)
 
     XGCValues title_gc;
     title_gc.foreground = wm->focused_foreground_color;
-    wm->popup_menu.title_gc = XCreateGC(display, w, GCForeground, &title_gc);
+    int mask = GCForeground;
+    wm->popup_menu.title_gc = XCreateGC(display, w, mask, &title_gc);
+
+    XGCValues selected_gc;
+    selected_gc.foreground = alloc_color(wm, "yellow");
+    wm->popup_menu.selected_gc = XCreateGC(display, w, mask, &selected_gc);
 
     wm->popup_menu.draw = create_draw(wm, w);
     assert(wm->popup_menu.draw != NULL);
@@ -1016,7 +1056,7 @@ wm_main(WindowManager* wm, Display* display)
 {
     setup_window_manager(wm, display);
     reparent_toplevels(wm);
-    long mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask | SubstructureRedirectMask;
+    long mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | SubstructureRedirectMask;
     Window root = DefaultRootWindow(display);
     XSelectInput(display, root, mask);
     LOG(wm, "root window=0x%08x", root);
