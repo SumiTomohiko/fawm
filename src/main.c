@@ -88,6 +88,10 @@ struct WindowManager {
         } items[3];
     } popup_menu;
 
+    struct {
+        Window window;
+    } taskbar;
+
     FILE* log_file; /* For debug */
 };
 
@@ -1015,7 +1019,7 @@ change_popup_menu_event_mask(WindowManager* wm, Window w)
 }
 
 static void
-init_popup_menu(WindowManager* wm)
+setup_popup_menu(WindowManager* wm)
 {
     Display* display = wm->display;
     int screen = DefaultScreen(display);
@@ -1056,7 +1060,7 @@ init_popup_menu(WindowManager* wm)
 }
 
 static void
-init_title_font(WindowManager* wm)
+setup_title_font(WindowManager* wm)
 {
     Display* display = wm->display;
     int screen = DefaultScreen(display);
@@ -1077,7 +1081,7 @@ init_title_font(WindowManager* wm)
 }
 
 static void
-init_cursors(WindowManager* wm)
+setup_cursors(WindowManager* wm)
 {
     Display* display = wm->display;
 #define CREATE_CURSOR(member, cursor) \
@@ -1095,6 +1099,27 @@ init_cursors(WindowManager* wm)
 }
 
 static void
+setup_taskbar(WindowManager* wm)
+{
+    Display* display = wm->display;
+    Window root = DefaultRootWindow(display);
+    unsigned int root_width;
+    unsigned int root_height;
+    get_geometry(wm, root, &root_width, &root_height);
+
+    int font_height = compute_font_height(wm->title_font);
+    int border_size = wm->border_size;
+    int screen = DefaultScreen(display);
+    Window w = XCreateSimpleWindow(
+        display, root,
+        - border_size, root_height - font_height,
+        root_width, font_height,
+        border_size,
+        BlackPixel(display, screen), wm->unfocused_foreground_color);
+    wm->taskbar.window = w;
+}
+
+static void
 setup_window_manager(WindowManager* wm, Display* display)
 {
     wm->display = display;
@@ -1106,9 +1131,10 @@ setup_window_manager(WindowManager* wm, Display* display)
     wm->resizable_corner_size = 32;
     setup_frame_list(wm);
     release_frame(wm);
-    init_title_font(wm);
-    init_cursors(wm);
-    init_popup_menu(wm);
+    setup_title_font(wm);
+    setup_cursors(wm);
+    setup_popup_menu(wm);
+    setup_taskbar(wm);
 
 #if 0
     const char* log_path = "uwm.log";
@@ -1125,6 +1151,7 @@ wm_main(WindowManager* wm, Display* display)
 {
     setup_window_manager(wm, display);
     reparent_toplevels(wm);
+    XMapWindow(display, wm->taskbar.window);
     long mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | SubstructureRedirectMask;
     Window root = DefaultRootWindow(display);
     XSelectInput(display, root, mask);
