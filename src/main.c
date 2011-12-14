@@ -33,9 +33,13 @@ enum GraspedPosition {
     GP_NONE,
     GP_TITLE_BAR,
     GP_NORTH,
+    GP_NORTH_EAST,
     GP_EAST,
+    GP_SOUTH_EAST,
     GP_SOUTH,
-    GP_WEST
+    GP_SOUTH_WEST,
+    GP_WEST,
+    GP_NORTH_WEST
 };
 
 typedef enum GraspedPosition GraspedPosition;
@@ -48,6 +52,7 @@ struct WindowManager {
     int border_size;
     int frame_size;
     int title_height;
+    int resizable_corner_size;
 
     Frame* frames;
 
@@ -194,6 +199,46 @@ draw_title_text(WindowManager* wm, Frame* frame)
 }
 
 static void
+get_geometry(WindowManager* wm, Window w, unsigned int* width, unsigned int* height)
+{
+    Window _;
+    int __;
+    unsigned int ___;
+    XGetGeometry(wm->display, w, &_, &__, &__, width, height, &___, &___);
+}
+
+static void
+draw_corner(WindowManager* wm, Window w)
+{
+    unsigned int width;
+    unsigned int height;
+    get_geometry(wm, w, &width, &height);
+    Display* display = wm->display;
+    GC gc = DefaultGC(display, DefaultScreen(display));
+    int frame_size = wm->frame_size;
+    int corner_size = wm->resizable_corner_size;
+#define DRAW_LINE(x1, y1, x2, y2) \
+    XDrawLine(display, w, gc, (x1), (y1), (x2), (y2))
+#define DRAW_HORIZONTAL_LINE(x1, y1, x2) DRAW_LINE((x1), (y1), (x2), (y1))
+#define DRAW_VIRTICAL_LINE(x1, y1, y2) DRAW_LINE((x1), (y1), (x1), (y2))
+    DRAW_HORIZONTAL_LINE(0, corner_size, frame_size);
+    DRAW_VIRTICAL_LINE(corner_size, 0, frame_size);
+    int east_x1 = width - corner_size;
+    DRAW_VIRTICAL_LINE(east_x1, 0, frame_size);
+    int east_x2 = width - frame_size;
+    DRAW_HORIZONTAL_LINE(east_x2, corner_size, width);
+    int south_y1 = height - corner_size;
+    DRAW_HORIZONTAL_LINE(east_x2, south_y1, width);
+    int south_y2 = height - frame_size;
+    DRAW_VIRTICAL_LINE(east_x1, south_y2, height);
+    DRAW_VIRTICAL_LINE(corner_size, south_y2, height);
+    DRAW_HORIZONTAL_LINE(0, south_y1, frame_size);
+#undef DRAW_VIRTICAL_LINE
+#undef DRAW_HORIZONTAL_LINE
+#undef DRAW_LINE
+}
+
+static void
 draw_frame(WindowManager* wm, Window w)
 {
     Frame* frame = search_frame(wm, w);
@@ -202,6 +247,7 @@ draw_frame(WindowManager* wm, Window w)
     }
     draw_title_text(wm, frame);
     draw_close_icon(wm, frame);
+    draw_corner(wm, w);
 }
 
 static void
@@ -450,6 +496,72 @@ map_popup_menu(WindowManager* wm, int x, int y)
     XMapRaised(display, popup_menu);
 }
 
+static GraspedPosition
+detect_frame_position(WindowManager* wm, Window w, int x, int y)
+{
+    unsigned int width;
+    unsigned int height;
+    get_geometry(wm, w, &width, &height);
+    int frame_size = wm->frame_size;
+    int corner_size = wm->resizable_corner_size;
+    int virt_corner_size = corner_size - frame_size;
+
+    if (is_region_inside(0, frame_size, frame_size, virt_corner_size, x, y)) {
+        return GP_NORTH_WEST;
+    }
+    if (is_region_inside(0, 0, corner_size, frame_size, x, y)) {
+        return GP_NORTH_WEST;
+    }
+
+    int middle_width = width - 2 * corner_size;
+    if (is_region_inside(corner_size, 0, middle_width, frame_size, x, y)) {
+        return GP_NORTH;
+    }
+
+    int east_corner_x = width - corner_size;
+    if (is_region_inside(east_corner_x, 0, corner_size, frame_size, x, y)) {
+        return GP_NORTH_EAST;
+    }
+    int virt_east_x = width - frame_size;
+    if (is_region_inside(virt_east_x, frame_size, frame_size, virt_corner_size, x, y)) {
+        return GP_NORTH_EAST;
+    }
+
+    int middle_height = height - 2 * corner_size;
+    if (is_region_inside(virt_east_x, corner_size, frame_size, middle_height, x, y)) {
+        return GP_EAST;
+    }
+
+    if (is_region_inside(virt_east_x, height - corner_size, frame_size, virt_corner_size, x, y)) {
+        return GP_SOUTH_EAST;
+    }
+    int bottom_y = height - frame_size;
+    if (is_region_inside(east_corner_x, bottom_y, corner_size, frame_size, x, y)) {
+        return GP_SOUTH_EAST;
+    }
+
+    if (is_region_inside(corner_size, height - frame_size, middle_width, frame_size, x, y)) {
+        return GP_SOUTH;
+    }
+
+    if (is_region_inside(0, bottom_y, corner_size, frame_size, x, y)) {
+        return GP_SOUTH_WEST;
+    }
+    if (is_region_inside(0, height - corner_size, frame_size, corner_size - frame_size, x, y)) {
+        return GP_SOUTH_WEST;
+    }
+
+    if (is_region_inside(0, corner_size, frame_size, middle_height, x, y)) {
+        return GP_WEST;
+    }
+
+    if (is_region_inside(0, 0, width, height, x, y)) {
+        return GP_TITLE_BAR;
+    }
+
+    return GP_NONE;
+}
+
 static void
 process_button_press(WindowManager* wm, XButtonEvent* e)
 {
@@ -476,36 +588,21 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
     }
     XRaiseWindow(display, w);
     focus(wm, frame->child);
-    XWindowAttributes wa;
-    XGetWindowAttributes(display, w, &wa);
-    int width = wa.width;
-    int height = wa.height;
-    if (is_region_inside(0, 0, width, frame_size, x, y)) {
-        grasp_frame(wm, GP_NORTH, w, x, y);
-        return;
-    }
-    if (is_region_inside(width - frame_size, 0, frame_size, height, x, y)) {
-        grasp_frame(wm, GP_EAST, w, x, y);
-        return;
-    }
-    if (is_region_inside(0, height - frame_size, width, frame_size, x, y)) {
-        grasp_frame(wm, GP_SOUTH, w, x, y);
-        return;
-    }
-    if (is_region_inside(0, 0, frame_size, height, x, y)) {
-        grasp_frame(wm, GP_WEST, w, x, y);
-        return;
-    }
-    if (is_region_inside(0, 0, width, height, x, y)) {
-        grasp_frame(wm, GP_TITLE_BAR, w, x, y);
-        return;
-    }
+    grasp_frame(wm, detect_frame_position(wm, w, x, y), w, x, y);
 }
 
 static void
 unmap_popup_menu(WindowManager* wm)
 {
     XUnmapWindow(wm->display, wm->popup_menu.window);
+}
+
+static void
+resize_child(WindowManager* wm, Window w, int frame_width, int frame_height)
+{
+    int width = frame_width - compute_frame_width(wm);
+    int height = frame_height - compute_frame_height(wm);
+    XResizeWindow(wm->display, w, width, height);
 }
 
 static void
@@ -537,38 +634,70 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     int new_height;
     switch (wm->grasped_position) {
     case GP_NORTH:
+        new_width = frame_attrs.width;
         new_height = frame_attrs.y + frame_attrs.height - new_y;
-        XMoveResizeWindow(display, w,
+        XMoveResizeWindow(
+            display, w,
             frame_attrs.x, new_y,
-            frame_attrs.width, new_height);
-        XResizeWindow(
-            display, child,
-            child_attrs.width, new_height - compute_frame_height(wm));
+            new_width, new_height);
+        resize_child(wm, child, new_width, new_height);
+        return;
+    case GP_NORTH_EAST:
+        new_width = x + (frame_attrs.width - wm->grasped_x);
+        new_height = frame_attrs.y + frame_attrs.height - new_y;
+        XMoveResizeWindow(
+            display, w,
+            frame_attrs.x, new_y,
+            new_width, new_height);
+        resize_child(wm, child, new_width, new_height);
+        wm->grasped_x = x;
         return;
     case GP_EAST:
         new_width = x + (frame_attrs.width - wm->grasped_x);
-        XResizeWindow(display, w, new_width, frame_attrs.height);
-        XResizeWindow(
-            display, child,
-            new_width - compute_frame_width(wm), child_attrs.height);
+        new_height = frame_attrs.height;
+        XResizeWindow(display, w, new_width, new_height);
+        resize_child(wm, child, new_width, new_height);
         wm->grasped_x = x;
         return;
-    case GP_SOUTH:
+    case GP_SOUTH_EAST:
+        new_width = x + (frame_attrs.width - wm->grasped_x);
         new_height = y + (frame_attrs.height - wm->grasped_y);
-        XResizeWindow(display, w, frame_attrs.width, new_height);
-        XResizeWindow(
-            display, child,
-            child_attrs.width, new_height - compute_frame_height(wm));
+        XResizeWindow(display, w, new_width, new_height);
+        resize_child(wm, child, new_width, new_height);
+        wm->grasped_x = x;
+        wm->grasped_y = y;
+        return;
+    case GP_SOUTH:
+        new_width = frame_attrs.width;
+        new_height = y + (frame_attrs.height - wm->grasped_y);
+        XResizeWindow(display, w, new_width, new_height);
+        resize_child(wm, child, new_width, new_height);
+        wm->grasped_y = y;
+        return;
+    case GP_SOUTH_WEST:
+        new_width = frame_attrs.x + frame_attrs.width - new_x;
+        new_height = y + (frame_attrs.height - wm->grasped_y);
+        XMoveResizeWindow(
+            display, w,
+            new_x, frame_attrs.y,
+            new_width, new_height);
+        resize_child(wm, child, new_width, new_height);
         wm->grasped_y = y;
         return;
     case GP_WEST:
         new_width = frame_attrs.x + frame_attrs.width - new_x;
-        XMoveResizeWindow(display, w,
+        new_height = frame_attrs.height;
+        XMoveResizeWindow(
+            display, w,
             new_x, frame_attrs.y,
-            new_width, frame_attrs.height);
-        XResizeWindow(
-            display, child,
-            new_width - compute_frame_width(wm), child_attrs.height);
+            new_width, new_height);
+        resize_child(wm, w, new_width, new_height);
+        return;
+    case GP_NORTH_WEST:
+        new_width = frame_attrs.x + frame_attrs.width - new_x;
+        new_height = frame_attrs.y + frame_attrs.height - new_y;
+        XMoveResizeWindow(display, w, new_x, new_y, new_width, new_height);
+        resize_child(wm, child, new_width, new_height);
         return;
     case GP_NONE:
     case GP_TITLE_BAR:
@@ -853,6 +982,7 @@ setup_window_manager(WindowManager* wm, Display* display)
     wm->border_size = 1;
     wm->frame_size = 4;
     wm->title_height = 16;
+    wm->resizable_corner_size = 32;
     setup_frame_list(wm);
     release_frame(wm);
     init_title_font(wm);
