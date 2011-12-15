@@ -24,6 +24,8 @@ struct Frame {
     struct Frame* next;
     Window window;
     Window child;
+    Pixmap active_close_icon;
+    Pixmap inactive_close_icon;
     Pixmap close_icon;
     XftDraw* draw;
     char title[64];
@@ -330,6 +332,20 @@ create_draw(WindowManager* wm, Window w)
     return XftDrawCreate(display, w, visual, colormap);
 }
 
+static Pixmap
+create_close_icon(WindowManager* wm, Window w, int pixel)
+{
+    Display* display = wm->display;
+    int screen = DefaultScreen(display);
+    return XCreatePixmapFromBitmapData(
+        display,
+        w,
+        (char*)close_icon_bits,
+        close_icon_width, close_icon_height,
+        BlackPixel(display, screen), pixel,
+        DefaultDepth(display, screen));
+}
+
 static Frame*
 create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
 {
@@ -337,23 +353,22 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
     int screen = DefaultScreen(display);
     int width = child_width + compute_frame_width(wm);
     int height = child_height + compute_frame_height(wm);
+    int focused_color = wm->focused_foreground_color;
     Window w = XCreateSimpleWindow(
         display, DefaultRootWindow(display),
         x, y,
         width, height,
         wm->border_size,
-        BlackPixel(display, screen), wm->focused_foreground_color);
+        BlackPixel(display, screen), focused_color);
     change_frame_event_mask(wm, w);
 
     Frame* frame = alloc_frame();
     frame->window = w;
-    frame->close_icon = XCreatePixmapFromBitmapData(
-        display,
-        w,
-        (char*)close_icon_bits,
-        close_icon_width, close_icon_height,
-        BlackPixel(display, screen), wm->focused_foreground_color,
-        DefaultDepth(display, screen));
+    Pixmap active_close_icon = create_close_icon(wm, w, focused_color);
+    frame->active_close_icon = active_close_icon;
+    int unfocused_color = wm->unfocused_foreground_color;
+    frame->inactive_close_icon = create_close_icon(wm, w, unfocused_color);
+    frame->close_icon = active_close_icon;
     frame->draw = create_draw(wm, w);
     assert(frame->draw != NULL);
 
@@ -438,7 +453,8 @@ free_frame(WindowManager* wm, Frame* frame)
     remove_frame(wm, frame);
 
     XftDrawDestroy(frame->draw);
-    XFreePixmap(wm->display, frame->close_icon);
+    XFreePixmap(wm->display, frame->inactive_close_icon);
+    XFreePixmap(wm->display, frame->active_close_icon);
 
     memset(frame, 0xfd, sizeof(*frame));
     free(frame);
@@ -583,6 +599,17 @@ detect_frame_position(WindowManager* wm, Window w, int x, int y)
     return GP_NONE;
 }
 
+static Bool
+is_on_close_icon(WindowManager* wm, Window w, int x, int y)
+{
+    int frame_size = wm->frame_size;
+    int close_x = compute_close_icon_x(wm, w);
+    int close_y = wm->border_size + frame_size;
+    int width = close_icon_width;
+    int height = close_icon_height;
+    return is_region_inside(close_x, close_y, width, height, x, y);
+}
+
 static void
 process_button_press(WindowManager* wm, XButtonEvent* e)
 {
@@ -597,14 +624,9 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
     }
     Frame* frame = search_frame(wm, w);
     assert(frame != NULL);
-    int frame_size = wm->frame_size;
-    int close_x = compute_close_icon_x(wm, w);
-    int close_y = wm->border_size + frame_size;
-    int width = close_icon_width;
-    int height = close_icon_height;
     int x = e->x;
     int y = e->y;
-    if (is_region_inside(close_x, close_y, width, height, x, y)) {
+    if (is_on_close_icon(wm, w, x, y)) {
         XKillClient(display, frame->child);
         destroy_frame(wm, frame);
         return;
@@ -697,6 +719,28 @@ highlight_selected_popup_item(WindowManager* wm, int x, int y)
     expose(wm, wm->popup_menu.window);
 }
 
+static Pixmap
+select_close_icon(WindowManager* wm, Frame* frame, int x, int y)
+{
+    if (is_on_close_icon(wm, frame->window, x, y)) {
+        return frame->active_close_icon;
+    }
+    return frame->inactive_close_icon;
+}
+
+static void
+change_close_icon(WindowManager* wm, Window w, int x, int y)
+{
+    Frame* frame = search_frame(wm, w);
+    assert(frame != NULL);
+    Pixmap icon = select_close_icon(wm, frame, x, y);
+    if (icon == frame->close_icon) {
+        return;
+    }
+    frame->close_icon = icon;
+    expose(wm, w);
+}
+
 static void
 change_cursor(WindowManager* wm, Window w, int x, int y)
 {
@@ -750,6 +794,7 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     }
     if ((e->state & Button1Mask) == 0) {
         change_cursor(wm, w, x, y);
+        change_close_icon(wm, w, x, y);
         return;
     }
 
