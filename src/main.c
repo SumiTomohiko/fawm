@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -1231,6 +1232,41 @@ setup_window_manager(WindowManager* wm, Display* display)
 }
 
 static void
+update_clock(WindowManager* wm)
+{
+    time_t now;
+    time(&now);
+    if (wm->taskbar.clock / 60 == now / 60) {
+        return;
+    }
+    expose(wm, wm->taskbar.window);
+    wm->taskbar.clock = now;
+}
+
+static void
+wait_event(WindowManager* wm)
+{
+    Display* display = wm->display;
+    struct timeval timeout;
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
+    while (XPending(display) == 0) {
+        int fd = XConnectionNumber(display);
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(fd, &fds);
+        int status = select(fd + 1, &fds, NULL, NULL, &timeout);
+        if (status < 0) {
+            print_error("select failed: %s", strerror(errno));
+            abort();
+        }
+        else if (status == 0) {
+            update_clock(wm);
+        }
+    }
+}
+
+static void
 wm_main(WindowManager* wm, Display* display)
 {
     setup_window_manager(wm, display);
@@ -1242,16 +1278,7 @@ wm_main(WindowManager* wm, Display* display)
     LOG(wm, "root window=0x%08x", root);
 
     while (1) {
-        if (XPending(display) == 0) {
-            time_t now;
-            time(&now);
-            if (wm->taskbar.clock / 60 != now / 60) {
-                expose(wm, wm->taskbar.window);
-                wm->taskbar.clock = now;
-            }
-            continue;
-        }
-
+        wait_event(wm);
         XEvent e;
         XNextEvent(display, &e);
         process_event(wm, &e);
