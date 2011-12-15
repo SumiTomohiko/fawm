@@ -1244,25 +1244,32 @@ update_clock(WindowManager* wm)
 }
 
 static void
-wait_event(WindowManager* wm)
+do_select(WindowManager* wm)
 {
     Display* display = wm->display;
+    int fd = XConnectionNumber(display);
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
     struct timeval timeout;
     timeout.tv_sec = 1;
     timeout.tv_usec = 0;
+    int status = select(fd + 1, &fds, NULL, NULL, &timeout);
+    if (status < 0) {
+        print_error("select failed: %s", strerror(errno));
+        abort();
+    }
+    else if (status == 0) {
+        update_clock(wm);
+    }
+}
+
+static void
+wait_event(WindowManager* wm)
+{
+    Display* display = wm->display;
     while (XPending(display) == 0) {
-        int fd = XConnectionNumber(display);
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-        int status = select(fd + 1, &fds, NULL, NULL, &timeout);
-        if (status < 0) {
-            print_error("select failed: %s", strerror(errno));
-            abort();
-        }
-        else if (status == 0) {
-            update_clock(wm);
-        }
+        do_select(wm);
     }
 }
 
