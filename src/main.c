@@ -1045,7 +1045,7 @@ process_event(WindowManager* wm, XEvent* e)
     }
     else if (e->type == ButtonRelease) {
         XButtonEvent* ev = &e->xbutton;
-        LOG(wm, "ButtonPress: window=0x%08x", ev->window);
+        LOG(wm, "ButtonRelease: window=0x%08x", ev->window);
         process_button_release(wm, &e->xbutton);
     }
     else if (e->type == DestroyNotify) {
@@ -1111,6 +1111,7 @@ setup_popup_menu(WindowManager* wm)
         42, 42, /* They are dummy. They will be defined after. */
         wm->border_size,
         BlackPixel(display, screen), WhitePixel(display, screen));
+    LOG(wm, "popup menu: 0x%08x", w);
     change_popup_menu_event_mask(wm, w);
     wm->popup_menu.window = w;
 
@@ -1198,15 +1199,32 @@ setup_taskbar(WindowManager* wm)
         root_width, font_height,
         border_size,
         BlackPixel(display, screen), wm->unfocused_foreground_color);
+    LOG(wm, "taskbar: 0x%08x", w);
     change_taskbar_event_mask(wm, w);
     wm->taskbar.window = w;
     wm->taskbar.draw = create_draw(wm, w);
     wm->taskbar.clock = -1;
 }
 
+static FILE*
+open_log()
+{
+#if 0
+    const char* log_path = "uwm.log";
+    unlink(log_path);
+    FILE* fp = fopen(log_path, "w");
+    assert(fp != NULL);
+    return fp;
+#else
+    return NULL;
+#endif
+}
+
 static void
 setup_window_manager(WindowManager* wm, Display* display)
 {
+    wm->log_file = open_log();
+
     wm->display = display;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
     wm->unfocused_foreground_color = alloc_color(wm, "grey");
@@ -1220,15 +1238,6 @@ setup_window_manager(WindowManager* wm, Display* display)
     setup_cursors(wm);
     setup_popup_menu(wm);
     setup_taskbar(wm);
-
-#if 0
-    const char* log_path = "uwm.log";
-    unlink(log_path);
-    wm->log_file = fopen(log_path, "w");
-    assert(wm->log_file != NULL);
-#else
-    wm->log_file = NULL;
-#endif
 }
 
 static void
