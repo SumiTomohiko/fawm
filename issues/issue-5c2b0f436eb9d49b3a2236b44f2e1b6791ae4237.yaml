@@ -16,3 +16,11 @@ log_events:
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - created
   - ""
+- - 2011-12-16 14:21:18.113345 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - commented
+  - |-
+    This is a matter of mlterm.
+    
+    * mplayer/xterm combination does not have this problem.
+    * mlterm has same problem in JWM.
