@@ -878,7 +878,7 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
             display, w,
             new_x, frame_attrs.y,
             new_width, new_height);
-        resize_child(wm, w, new_width, new_height);
+        resize_child(wm, child, new_width, new_height);
         return;
     case GP_NORTH_WEST:
         new_width = frame_attrs.x + frame_attrs.width - new_x;
