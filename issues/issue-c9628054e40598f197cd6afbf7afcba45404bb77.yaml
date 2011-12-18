@@ -5,8 +5,8 @@ type: :task
 component: core
 release: 0.1.0
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
-status: :in_progress
-disposition: 
+status: :closed
+disposition: :fixed
 creation_time: 2011-12-12 02:36:12.951628 Z
 references: []
 
@@ -20,3 +20,11 @@ log_events:
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - changed status from unstarted to in_progress
   - ""
+- - 2011-12-18 19:08:53.572276 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - closed with disposition fixed
+  - ""
+- - 2011-12-18 19:09:40.411985 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - commented
+  - This issue was fixed in case of only xterm. Firefox has still same problem.
