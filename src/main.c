@@ -1302,8 +1302,39 @@ wait_event(WindowManager* wm)
 }
 
 static void
+log_error(FILE* fp, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    print_message(stderr, fmt, ap);
+    print_message(fp, fmt, ap);
+    va_end(ap);
+}
+
+static int
+error_handler(Display* display, XErrorEvent* e)
+{
+    FILE* fp = fopen("uwm.log", "w");
+    assert(fp != NULL);
+    log_error(fp, "X Error at pid %u", getpid());
+    log_error(fp, "Serial Number of Request Code: %lu", e->serial);
+    long code = e->error_code;
+    char msg[64];
+    XGetErrorText(display, code, msg, array_sizeof(msg));
+    log_error(fp, "Error Code of Failed Request: %u (%s)", code, msg);
+    log_error(fp, "Major Opcode of Failed Request: %u", e->request_code);
+    log_error(fp, "Minor Opcode of Failed Request: %u", e->minor_code);
+    fclose(fp);
+    abort();
+
+    return 0;
+}
+
+static void
 wm_main(WindowManager* wm, Display* display)
 {
+    XSetErrorHandler(error_handler);
+
     setup_window_manager(wm, display);
     reparent_toplevels(wm);
     XMapWindow(display, wm->taskbar.window);
