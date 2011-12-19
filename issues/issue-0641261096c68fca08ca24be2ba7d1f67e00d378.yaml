@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: GIMP's splash screen has a frame.
+desc: It does not have a frame in IceWM.
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-19 12:48:31.442645 Z
+references: []
+
+id: 0641261096c68fca08ca24be2ba7d1f67e00d378
+log_events: 
+- - 2011-12-19 12:48:32.466408 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: display (ImageMagick) causes BadWindow error.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-19 12:49:14.776898 Z
+references: []
+
+id: 036acbc0b6d0019564238c81be759994281ce309
+log_events: 
+- - 2011-12-19 12:49:15.306456 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
