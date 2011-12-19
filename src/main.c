@@ -150,6 +150,16 @@ is_sentinel_frame(Frame* frame)
 }
 
 static Frame*
+search_frame_of_child(WindowManager* wm, Window w)
+{
+    Frame* frame = wm->frames->next;
+    while (!is_sentinel_frame(frame) && (frame->child != w)) {
+        frame = frame->next;
+    }
+    return !is_sentinel_frame(frame) ? frame : NULL;
+}
+
+static Frame*
 search_frame(WindowManager* wm, Window w)
 {
     Frame* frame = wm->frames->next;
@@ -1060,6 +1070,28 @@ process_focus_in(WindowManager* wm, XFocusChangeEvent* e)
 }
 
 static void
+process_map_request(WindowManager* wm, XMapRequestEvent* e)
+{
+    Window w = e->window;
+    Frame* frame = search_frame_of_child(wm, w);
+    if (frame != NULL) {
+        return;
+    }
+    reparent_window(wm, w);
+}
+
+static void
+process_unmap_notify(WindowManager* wm, XUnmapEvent* e)
+{
+    Frame* frame = search_frame_of_child(wm, e->window);
+    if (frame == NULL) {
+        /* XXX: Who sends UnmapNotify without a frame? */
+        return;
+    }
+    XUnmapWindow(wm->display, frame->window);
+}
+
+static void
 process_event(WindowManager* wm, XEvent* e)
 {
     if (e->type == ButtonPress) {
@@ -1098,9 +1130,14 @@ process_event(WindowManager* wm, XEvent* e)
         process_motion_notify(wm, ev);
     }
     else if (e->type == MapRequest) {
-        Window w = e->xmaprequest.window;
-        LOG(wm, "MapRequest: window=0x%08x", w);
-        reparent_window(wm, w);
+        XMapRequestEvent* ev = &e->xmaprequest;
+        LOG(wm, "MapRequest: window=0x%08x", ev->window);
+        process_map_request(wm, ev);
+    }
+    else if (e->type == UnmapNotify) {
+        XUnmapEvent* ev = &e->xunmap;
+        LOG(wm, "UnmapNotify: window=0x%08x", ev->window);
+        process_unmap_notify(wm, ev);
     }
 }
 
