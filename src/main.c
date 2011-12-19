@@ -52,6 +52,7 @@ typedef enum GraspedPosition GraspedPosition;
 
 struct WindowManager {
     Display* display;
+    Bool running;
 
     unsigned long focused_foreground_color;
     unsigned long unfocused_foreground_color;
@@ -984,10 +985,11 @@ fork_child(const char* cmd)
 }
 
 static void
-execute(const char* cmd)
+execute(WindowManager* wm, const char* cmd)
 {
     if (strcmp(cmd, "exit") == 0) {
-        exit(0);
+        wm->running = False;
+        return;
     }
 
     pid_t pid = do_fork();
@@ -1010,7 +1012,7 @@ process_button_release(WindowManager* wm, XButtonEvent* e)
     if (index < 0) {
         return;
     }
-    execute(wm->popup_menu.items[index].command);
+    execute(wm, wm->popup_menu.items[index].command);
 }
 
 static void
@@ -1245,6 +1247,7 @@ setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
     wm->log_file = open_log(log_file);
 
     wm->display = display;
+    wm->running = True;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
     wm->unfocused_foreground_color = alloc_color(wm, "grey");
     wm->border_size = 1;
@@ -1343,7 +1346,7 @@ wm_main(WindowManager* wm, Display* display, const char* log_file)
     XSelectInput(display, root, mask);
     LOG(wm, "root window=0x%08x", root);
 
-    while (1) {
+    while (wm->running) {
         wait_event(wm);
         XEvent e;
         XNextEvent(display, &e);
