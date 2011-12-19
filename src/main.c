@@ -110,6 +110,9 @@ typedef struct WindowManager WindowManager;
 static void
 print_message(FILE* fp, const char* fmt, va_list ap)
 {
+    if (fp == NULL) {
+        return;
+    }
     char buf[128];
     vsnprintf(buf, array_sizeof(buf), fmt, ap);
     fprintf(fp, "%s\n", buf);
@@ -119,9 +122,6 @@ print_message(FILE* fp, const char* fmt, va_list ap)
 static void
 output_log(WindowManager* wm, const char* fmt, ...)
 {
-    if (wm->log_file == NULL) {
-        return;
-    }
     va_list ap;
     va_start(ap, fmt);
     print_message(wm->log_file, fmt, ap);
@@ -1317,7 +1317,7 @@ log_error(FILE* fp, const char* fmt, ...)
 static int
 error_handler(Display* display, XErrorEvent* e)
 {
-    FILE* fp = fopen("uwm.log", "w");
+    FILE* fp = fopen("uwm-error.log", "w");
     assert(fp != NULL);
     log_error(fp, "X Error at pid %u", getpid());
     log_error(fp, "Serial Number of Request Code: %lu", e->serial);

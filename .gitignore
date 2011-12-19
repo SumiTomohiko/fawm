@@ -1,8 +1,8 @@
 *.core
+*.log
 .ditz-config
 .gdb_history
 .lock-waf_*
 .waf*
 build
 core
-uwm.log
