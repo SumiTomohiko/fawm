@@ -418,7 +418,9 @@ reparent_window(WindowManager* wm, Window w)
     int x = frame_size;
     int y = 2 * frame_size + wm->title_height;
     XSetWindowBorderWidth(display, w, 0);
-    XReparentWindow(display, w, frame->window, x, y);
+    Window parent = frame->window;
+    LOG(wm, "Reparented: frame=0x%08x, child=0x%08x", parent, w);
+    XReparentWindow(display, w, parent, x, y);
     XMapWindow(display, frame->window);
     XMapWindow(display, w);
     focus(wm, frame->child);
