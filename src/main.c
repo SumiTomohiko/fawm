@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <getopt.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1226,23 +1227,22 @@ setup_taskbar(WindowManager* wm)
 }
 
 static FILE*
-open_log()
+open_log(const char* log_file)
 {
-#if 0
-    const char* log_path = "uwm.log";
-    unlink(log_path);
-    FILE* fp = fopen(log_path, "w");
-    assert(fp != NULL);
+    if (strlen(log_file) == 0) {
+        return NULL;
+    }
+    FILE* fp = fopen(log_file, "w");
+    if (fp == NULL) {
+        print_error("Cannot open %s: %s", log_file, strerror(errno));
+    }
     return fp;
-#else
-    return NULL;
-#endif
 }
 
 static void
-setup_window_manager(WindowManager* wm, Display* display)
+setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
 {
-    wm->log_file = open_log();
+    wm->log_file = open_log(log_file);
 
     wm->display = display;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
@@ -1331,11 +1331,11 @@ error_handler(Display* display, XErrorEvent* e)
 }
 
 static void
-wm_main(WindowManager* wm, Display* display)
+wm_main(WindowManager* wm, Display* display, const char* log_file)
 {
     XSetErrorHandler(error_handler);
 
-    setup_window_manager(wm, display);
+    setup_window_manager(wm, display, log_file);
     reparent_toplevels(wm);
     XMapWindow(display, wm->taskbar.window);
     long mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | SubstructureRedirectMask;
@@ -1349,11 +1349,35 @@ wm_main(WindowManager* wm, Display* display)
         XNextEvent(display, &e);
         process_event(wm, &e);
     }
+
+    fclose(wm->log_file);
 }
 
 int
-main(int argc, const char* argv[])
+main(int argc, char* argv[])
 {
+    char log_file[64] = { '\0' };
+    struct option longopts[] = {
+        { "log-file", required_argument, NULL, 'l' },
+        { NULL, 0, NULL, 0 }
+    };
+    int val;
+    while ((val = getopt_long_only(argc, argv, "l", longopts, NULL)) != -1) {
+        switch (val) {
+        case 'l':
+            if (array_sizeof(log_file) - 1 < strlen(optarg)) {
+                print_error("Log Filename Too Long.");
+                return 1;
+            }
+            strcpy(log_file, optarg);
+            break;
+        case ':':
+        case '?':
+        default:
+            return 1;
+        }
+    }
+
     Display* display = XOpenDisplay(NULL);
     if (display == NULL) {
         print_error("XOpenDisplay failed.");
@@ -1361,7 +1385,7 @@ main(int argc, const char* argv[])
     }
 
     WindowManager wm;
-    wm_main(&wm, display);
+    wm_main(&wm, display, log_file);
 
     XCloseDisplay(display);
 
