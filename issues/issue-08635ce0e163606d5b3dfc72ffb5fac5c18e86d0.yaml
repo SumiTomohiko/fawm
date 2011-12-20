@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Popup menu remind past selected item.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-20 17:59:02.201962 Z
+references: []
+
+id: 08635ce0e163606d5b3dfc72ffb5fac5c18e86d0
+log_events: 
+- - 2011-12-20 17:59:03.150831 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
