@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Closing a child window kills its process overall.
+desc: Reproducted in GIMP.
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-21 08:27:56.118450 Z
+references: []
+
+id: db8abdb3a09acaf10f565bf0c6fbf31fd0fc9fe3
+log_events: 
+- - 2011-12-21 08:27:57.220794 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""

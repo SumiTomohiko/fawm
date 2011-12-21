@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: GIMP's scale must not be resizable.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-21 08:29:59.411181 Z
+references: []
+
+id: 0663ea13b7ca34b03496d02e76aa9797a602aefc
+log_events: 
+- - 2011-12-21 08:30:00.018998 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
