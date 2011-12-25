@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Change the default cursor?
+desc: Current default cursor hides pointer's target.
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-25 16:05:50.872691 Z
+references: []
+
+id: acfa0f0afce2c9359099ac897a999c10b0e851c1
+log_events: 
+- - 2011-12-25 16:05:51.439753 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
