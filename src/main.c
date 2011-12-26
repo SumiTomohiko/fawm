@@ -1048,7 +1048,7 @@ process_focus_out(WindowManager* wm, XFocusChangeEvent* e)
         return;
     }
     int detail = e->detail;
-    if ((detail != NotifyVirtual) && (detail != NotifyNonlinearVirtual)) {
+    if ((detail != NotifyNonlinear) && (detail != NotifyNonlinearVirtual)) {
         return;
     }
     Window w = e->window;
@@ -1062,10 +1062,17 @@ process_focus_out(WindowManager* wm, XFocusChangeEvent* e)
 static void
 process_focus_in(WindowManager* wm, XFocusChangeEvent* e)
 {
-    if ((e->mode != NotifyNormal) || (e->detail != NotifyNonlinearVirtual)) {
+    if (e->mode != NotifyNormal) {
+        return;
+    }
+    int detail = e->detail;
+    if ((detail != NotifyNonlinear) && (detail != NotifyNonlinearVirtual)) {
         return;
     }
     Window w = e->window;
+    if (!is_alive_frame(wm, w)) {
+        return;
+    }
     XRaiseWindow(wm->display, w);
     change_frame_background(wm, w, wm->focused_foreground_color);
 }
