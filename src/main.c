@@ -424,6 +424,7 @@ reparent_window(WindowManager* wm, Window w)
     Frame* frame = create_frame(wm, wa.x, wa.y, wa.width, wa.height);
     frame->child = w;
     get_window_name(wm, frame->title, array_sizeof(frame->title), w);
+    LOG(wm, "Window Name: window=0x%08x, name=%s", w, frame->title);
     int frame_size = wm->frame_size;
     int x = frame_size;
     int y = 2 * frame_size + wm->title_height;
