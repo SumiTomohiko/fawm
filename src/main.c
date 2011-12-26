@@ -290,7 +290,7 @@ static void
 change_frame_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
-    swa.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | PointerMotionMask | SubstructureNotifyMask;
+    swa.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | PointerMotionMask | SubstructureNotifyMask | SubstructureRedirectMask;
     XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
 }
 
@@ -1099,52 +1099,134 @@ process_unmap_notify(WindowManager* wm, XUnmapEvent* e)
     XUnmapWindow(wm->display, frame->window);
 }
 
+static const char*
+dmxEventName(int type)
+{
+    switch (type) {
+    case KeyPress:         return "KeyPress";
+    case KeyRelease:       return "KeyRelease";
+    case ButtonPress:      return "ButtonPress";
+    case ButtonRelease:    return "ButtonRelease";
+    case MotionNotify:     return "MotionNotify";
+    case EnterNotify:      return "EnterNotify";
+    case LeaveNotify:      return "LeaveNotify";
+    case FocusIn:          return "FocusIn";
+    case FocusOut:         return "FocusOut";
+    case KeymapNotify:     return "KeymapNotify";
+    case Expose:           return "Expose";
+    case GraphicsExpose:   return "GraphicsExpose";
+    case NoExpose:         return "NoExpose";
+    case VisibilityNotify: return "VisibilityNotify";
+    case CreateNotify:     return "CreateNotify";
+    case DestroyNotify:    return "DestroyNotify";
+    case UnmapNotify:      return "UnmapNotify";
+    case MapNotify:        return "MapNotify";
+    case MapRequest:       return "MapRequest";
+    case ReparentNotify:   return "ReparentNotify";
+    case ConfigureNotify:  return "ConfigureNotify";
+    case ConfigureRequest: return "ConfigureRequest";
+    case GravityNotify:    return "GravityNotify";
+    case ResizeRequest:    return "ResizeRequest";
+    case CirculateNotify:  return "CirculateNotify";
+    case CirculateRequest: return "CirculateRequest";
+    case PropertyNotify:   return "PropertyNotify";
+    case SelectionClear:   return "SelectionClear";
+    case SelectionRequest: return "SelectionRequest";
+    case SelectionNotify:  return "SelectionNotify";
+    case ColormapNotify:   return "ColormapNotify";
+    case ClientMessage:    return "ClientMessage";
+    case MappingNotify:    return "MappingNotify";
+    default:               return "<unknown>";
+    }
+}
+
+static void
+process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
+{
+    Display* display = wm->display;
+    Window w = e->window;
+    unsigned long value_mask = e->value_mask;
+    if (value_mask & CWX) {
+        XWindowChanges changes;
+        changes.x = e->x;
+        XConfigureWindow(display, w, CWX, &changes);
+    }
+    if (value_mask & CWY) {
+        XWindowChanges changes;
+        changes.y = e->y;
+        XConfigureWindow(display, w, CWY, &changes);
+    }
+    if (value_mask & CWWidth) {
+        XWindowChanges changes;
+        changes.width = e->width;
+        XConfigureWindow(display, w, CWWidth, &changes);
+    }
+    if (value_mask & CWHeight) {
+        XWindowChanges changes;
+        changes.height = e->height;
+        XConfigureWindow(display, w, CWHeight, &changes);
+    }
+    if (value_mask & CWBorderWidth) {
+        XWindowChanges changes;
+        changes.border_width = e->border_width;
+        XConfigureWindow(display, w, CWBorderWidth, &changes);
+    }
+    if (value_mask & CWSibling) {
+        LOG0(wm, "CWSibling");
+    }
+    if (value_mask & CWStackMode) {
+        XWindowChanges changes;
+        changes.stack_mode = e->detail;
+        XConfigureWindow(display, w, CWStackMode, &changes);
+    }
+}
+
 static void
 process_event(WindowManager* wm, XEvent* e)
 {
-    if (e->type == ButtonPress) {
+    int type = e->type;
+    if (type != MotionNotify) {
+        LOG(wm, "%s: window=0x%08x", dmxEventName(type), e->xany.window);
+    }
+    if (type == ButtonPress) {
         XButtonEvent* ev = &e->xbutton;
-        LOG(wm, "ButtonPress: window=0x%08x", ev->window);
         process_button_press(wm, ev);
     }
-    else if (e->type == ButtonRelease) {
+    else if (type == ButtonRelease) {
         XButtonEvent* ev = &e->xbutton;
-        LOG(wm, "ButtonRelease: window=0x%08x", ev->window);
-        process_button_release(wm, &e->xbutton);
+        process_button_release(wm, ev);
     }
-    else if (e->type == DestroyNotify) {
+    else if (type == ConfigureRequest) {
+        XConfigureRequestEvent* cre = &e->xconfigurerequest;
+        process_configure_request(wm, cre);
+    }
+    else if (type == DestroyNotify) {
         XDestroyWindowEvent* ev = &e->xdestroywindow;
-        LOG(wm, "DestroyNotify: window=0x%08x, event=0x%08x", ev->window, ev->event);
         process_destroy_notify(wm, ev);
     }
-    else if (e->type == Expose) {
+    else if (type == Expose) {
         XExposeEvent* ev = &e->xexpose;
-        LOG(wm, "Expose: window=0x%08x", ev->window);
         process_expose(wm, ev);
     }
-    else if (e->type == FocusIn) {
+    else if (type == FocusIn) {
         XFocusChangeEvent* ev = &e->xfocus;
-        LOG(wm, "FocusIn: window=0x%08x", ev->window);
         process_focus_in(wm, ev);
     }
-    else if (e->type == FocusOut) {
+    else if (type == FocusOut) {
         XFocusChangeEvent* ev = &e->xfocus;
-        LOG(wm, "FocusOut: window=0x%08x", ev->window);
         process_focus_out(wm, ev);
     }
-    else if (e->type == MotionNotify) {
+    else if (type == MotionNotify) {
         get_last_event(wm, e->xmotion.window, MotionNotify, e);
         XMotionEvent* ev = &e->xmotion;
         process_motion_notify(wm, ev);
     }
-    else if (e->type == MapRequest) {
+    else if (type == MapRequest) {
         XMapRequestEvent* ev = &e->xmaprequest;
-        LOG(wm, "MapRequest: window=0x%08x", ev->window);
         process_map_request(wm, ev);
     }
-    else if (e->type == UnmapNotify) {
+    else if (type == UnmapNotify) {
         XUnmapEvent* ev = &e->xunmap;
-        LOG(wm, "UnmapNotify: window=0x%08x", ev->window);
         process_unmap_notify(wm, ev);
     }
 }
