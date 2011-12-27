@@ -397,28 +397,9 @@ focus(WindowManager* wm, Window w)
 }
 
 static void
-reflect_hints(WindowManager* wm, Window w)
-{
-    Display* display = wm->display;
-    XSizeHints hints;
-    long supplied;
-    if (XGetWMNormalHints(display, w, &hints, &supplied) == 0) {
-        return;
-    }
-    if (supplied & USPosition) {
-        XMoveWindow(display, w, hints.x, hints.y);
-    }
-    if ((supplied & USSize) && (0 < hints.width) && (0 < hints.height)) {
-        XResizeWindow(display, w, hints.width, hints.height);
-    }
-}
-
-static void
 reparent_window(WindowManager* wm, Window w)
 {
     Display* display = wm->display;
-    reflect_hints(wm, w);
-
     XWindowAttributes wa;
     if (XGetWindowAttributes(display, w, &wa) == 0) {
         return;
