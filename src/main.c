@@ -432,6 +432,9 @@ reparent_window(WindowManager* wm, Window w)
     Window parent = frame->window;
     LOG(wm, "Reparented: frame=0x%08x, child=0x%08x", parent, w);
     XReparentWindow(display, w, parent, x, y);
+
+    XGrabButton(display, Button1, AnyModifier, w, True, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+
     XMapWindow(display, frame->window);
     XMapWindow(display, w);
     focus(wm, frame->child);
@@ -657,7 +660,14 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         map_popup_menu(wm, e->x, e->y);
         return;
     }
-    Frame* frame = search_frame(wm, w);
+    Frame* frame = search_frame_of_child(wm, w);
+    if (frame != NULL) {
+        XRaiseWindow(display, frame->window);
+        focus(wm, w);
+        XAllowEvents(display, ReplayPointer, CurrentTime);
+        return;
+    }
+    frame = search_frame(wm, w);
     assert(frame != NULL);
     int x = e->x;
     int y = e->y;
