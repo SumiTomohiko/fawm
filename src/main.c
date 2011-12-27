@@ -420,7 +420,9 @@ reparent_window(WindowManager* wm, Window w)
     reflect_hints(wm, w);
 
     XWindowAttributes wa;
-    XGetWindowAttributes(display, w, &wa);
+    if (XGetWindowAttributes(display, w, &wa) == 0) {
+        return;
+    }
     Frame* frame = create_frame(wm, wa.x, wa.y, wa.width, wa.height);
     frame->child = w;
     get_window_name(wm, frame->title, array_sizeof(frame->title), w);
