@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Show applications' icons in the popup menu.
+desc: ""
+type: :task
+component: core
+release: 
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2011-12-27 18:41:19.997369 Z
+references: []
+
+id: cbc752ad01bb017cd54aafae08a09e892a737217
+log_events: 
+- - 2011-12-27 18:41:20.943037 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
