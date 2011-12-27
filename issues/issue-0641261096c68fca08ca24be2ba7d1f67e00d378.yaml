@@ -3,7 +3,7 @@ title: GIMP's splash screen has a frame.
 desc: It does not have a frame in IceWM.
 type: :bugfix
 component: core
-release: 0.1.0
+release: 
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
 status: :unstarted
 disposition: 
@@ -16,3 +16,7 @@ log_events:
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - created
   - ""
+- - 2011-12-27 17:14:50.558186 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - unassigned from release 0.1.0
+  - GIMP's splash screen has a frame in ctwm and jwm. Nobody cares.
