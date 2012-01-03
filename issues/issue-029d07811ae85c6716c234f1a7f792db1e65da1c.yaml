@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: GIMP's "Save" button causes BadWidnow error.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2012-01-03 16:14:39.693798 Z
+references: []
+
+id: 029d07811ae85c6716c234f1a7f792db1e65da1c
+log_events: 
+- - 2012-01-03 16:14:40.605652 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
