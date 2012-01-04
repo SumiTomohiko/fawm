@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Restoring Firefox session makes a frame in another top frame.
+desc: ""
+type: :bugfix
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2012-01-04 16:12:24.684019 Z
+references: []
+
+id: e7225658492c46f04945196e01f5abc0b3ef2887
+log_events: 
+- - 2012-01-04 16:12:25.145088 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
