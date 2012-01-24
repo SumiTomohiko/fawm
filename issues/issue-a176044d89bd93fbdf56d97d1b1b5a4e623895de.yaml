@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Taskbar must be a single process.
+desc: ""
+type: :task
+component: core
+release: 0.1.0
+reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+status: :unstarted
+disposition: 
+creation_time: 2012-01-24 20:13:44.635574 Z
+references: []
+
+id: a176044d89bd93fbdf56d97d1b1b5a4e623895de
+log_events: 
+- - 2012-01-24 20:13:45.403055 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - created
+  - ""
