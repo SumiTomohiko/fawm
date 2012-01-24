@@ -5,8 +5,8 @@ type: :bugfix
 component: core
 release: 0.1.0
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
-status: :unstarted
-disposition: 
+status: :closed
+disposition: :fixed
 creation_time: 2012-01-04 16:12:24.684019 Z
 references: []
 
@@ -15,4 +15,30 @@ log_events:
 - - 2012-01-04 16:12:25.145088 Z
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - created
+  - ""
+- - 2012-01-24 17:13:23.146638 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - changed status from unstarted to in_progress
+  - ""
+- - 2012-01-24 19:18:23.148285 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - commented
+  - |-
+    The following way may reproduce this bug.
+    
+    1. Start Firefox.
+    2. kill -INT <pid>
+    3. Restart Firefox.
+- - 2012-01-24 19:24:22.494731 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - commented
+  - |-
+    More easy reproducing way:
+    
+    1. Start Firefox.
+    2. Close Firefox with a close button.
+    3. Restart Firefox.
+- - 2012-01-24 20:04:48.663093 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - closed with disposition fixed
   - ""

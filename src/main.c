@@ -1137,10 +1137,54 @@ dmxEventName(int type)
 }
 
 static void
-process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
+configure_frame(WindowManager* wm, Window parent, Window w, XConfigureRequestEvent* e)
 {
     Display* display = wm->display;
+    unsigned long value_mask = e->value_mask;
+    int frame_size = wm->frame_size;
+    if (value_mask & CWX) {
+        XWindowChanges changes;
+        changes.x = e->x - frame_size;
+        XConfigureWindow(display, parent, CWX, &changes);
+    }
+    if (value_mask & CWY) {
+        XWindowChanges changes;
+        changes.y = e->y - (frame_size + wm->title_height);
+        XConfigureWindow(display, parent, CWY, &changes);
+    }
+    if (value_mask & CWWidth) {
+        XWindowChanges changes;
+        int width = e->width;
+        changes.width = width + compute_frame_width(wm);
+        unsigned int value_mask = CWWidth;
+        XConfigureWindow(display, parent, value_mask, &changes);
+        changes.width = width;
+        XConfigureWindow(display, w, value_mask, &changes);
+    }
+    if (value_mask & CWHeight) {
+        XWindowChanges changes;
+        int height = e->height;
+        changes.height = height + compute_frame_height(wm);
+        unsigned int value_mask = CWHeight;
+        XConfigureWindow(display, parent, value_mask, &changes);
+        changes.height = height;
+        XConfigureWindow(display, w, value_mask, &changes);
+    }
+    /* Ignore CWBorderWidth, CWSibling and CWStackMode */
+}
+
+static void
+process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
+{
+    Window parent = e->parent;
+    Frame* frame = search_frame(wm, parent);
     Window w = e->window;
+    if (frame != NULL) {
+        configure_frame(wm, parent, w, e);
+        return;
+    }
+
+    Display* display = wm->display;
     unsigned long value_mask = e->value_mask;
     if (value_mask & CWX) {
         XWindowChanges changes;
