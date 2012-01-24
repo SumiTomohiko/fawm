@@ -5,8 +5,8 @@ type: :bugfix
 component: core
 release: 0.1.0
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
-status: :unstarted
-disposition: 
+status: :closed
+disposition: :fixed
 creation_time: 2012-01-03 16:14:39.693798 Z
 references: []
 
@@ -15,4 +15,23 @@ log_events:
 - - 2012-01-03 16:14:40.605652 Z
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - created
+  - ""
+- - 2012-01-24 15:57:52.320022 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - changed status from unstarted to in_progress
+  - ""
+- - 2012-01-24 15:59:35.118598 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - commented
+  - |-
+    How to reproduct:
+    
+    1. Start GIMP.
+    2. Open an image.
+    3. "File" - "Save As..."
+    4. Select an existing file.
+    5. Push "Save".
+- - 2012-01-24 17:01:49.483958 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - closed with disposition fixed
   - ""

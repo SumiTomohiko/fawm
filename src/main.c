@@ -213,6 +213,9 @@ get_window_name(WindowManager* wm, char* dest, int size, Window w)
     if (XTextPropertyToStringList(&prop, &strings, &_) == 0) {
         return;
     }
+    if (strings == NULL) {
+        return;
+    }
     snprintf(dest, size, "%s", strings[0]);
     XFreeStringList(strings);
 }
