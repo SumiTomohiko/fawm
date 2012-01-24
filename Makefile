@@ -1,5 +1,5 @@
 
-WAF = ./waf
+WAF = ./waf -v
 
 all:
 	$(WAF) build
