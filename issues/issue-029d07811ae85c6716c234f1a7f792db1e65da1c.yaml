@@ -24,7 +24,7 @@ log_events:
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - commented
   - |-
-    How to reproduct:
+    How to reproduce:
     
     1. Start GIMP.
     2. Open an image.
