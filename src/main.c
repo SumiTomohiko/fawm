@@ -293,7 +293,7 @@ static void
 change_frame_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
-    swa.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | PointerMotionMask | SubstructureNotifyMask | SubstructureRedirectMask;
+    swa.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | LeaveWindowMask | PointerMotionMask | SubstructureNotifyMask | SubstructureRedirectMask;
     XChangeWindowAttributes(wm->display, w, CWEventMask, &swa);
 }
 
@@ -1222,6 +1222,16 @@ process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
 }
 
 static void
+process_leave_notify(WindowManager* wm, XCrossingEvent* e)
+{
+    Window w = e->window;
+    if (search_frame(wm, w) == NULL) {
+        return;
+    }
+    XUndefineCursor(wm->display, w);
+}
+
+static void
 process_event(WindowManager* wm, XEvent* e)
 {
     int type = e->type;
@@ -1247,6 +1257,10 @@ process_event(WindowManager* wm, XEvent* e)
     else if (type == Expose) {
         XExposeEvent* ev = &e->xexpose;
         process_expose(wm, ev);
+    }
+    else if (type == LeaveNotify) {
+        XCrossingEvent* ev = &e->xcrossing;
+        process_leave_notify(wm, ev);
     }
     else if (type == FocusIn) {
         XFocusChangeEvent* ev = &e->xfocus;
