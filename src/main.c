@@ -1374,7 +1374,7 @@ setup_cursors(WindowManager* wm)
     Display* display = wm->display;
 #define CREATE_CURSOR(member, cursor) \
     wm->member = XCreateFontCursor(display, cursor)
-    CREATE_CURSOR(normal_cursor, XC_X_cursor);
+    CREATE_CURSOR(normal_cursor, XC_top_left_arrow);
     CREATE_CURSOR(bottom_left_cursor, XC_bottom_left_corner);
     CREATE_CURSOR(bottom_right_cursor, XC_bottom_right_corner);
     CREATE_CURSOR(bottom_cursor, XC_bottom_side);
@@ -1522,10 +1522,11 @@ wm_main(WindowManager* wm, Display* display, const char* log_file)
     XSetErrorHandler(error_handler);
 
     setup_window_manager(wm, display, log_file);
+    Window root = DefaultRootWindow(display);
+    XDefineCursor(display, root, wm->normal_cursor);
     reparent_toplevels(wm);
     XMapWindow(display, wm->taskbar.window);
     long mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | SubstructureRedirectMask;
-    Window root = DefaultRootWindow(display);
     XSelectInput(display, root, mask);
     LOG(wm, "root window=0x%08x", root);
 
