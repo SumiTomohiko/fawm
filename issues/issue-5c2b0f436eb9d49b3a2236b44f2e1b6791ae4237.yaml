@@ -3,7 +3,7 @@ title: mlterm cannot start while mplayer is running.
 desc: This bug is same as ctwm.
 type: :bugfix
 component: core
-release: 0.1.0
+release: 
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
 status: :unstarted
 disposition: 
@@ -24,3 +24,7 @@ log_events:
     
     * mplayer/xterm combination does not have this problem.
     * mlterm has same problem in JWM.
+- - 2012-01-25 18:23:14.387392 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - unassigned from release 0.1.0
+  - ""
