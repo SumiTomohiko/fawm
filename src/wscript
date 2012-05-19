@@ -4,7 +4,8 @@ def build(bld):
             features=["c", "cprogram"],
             source="main.c",
             target="uwm",
-            cflags=["-Wall", "-Werror", "-O3", "-g", "-I../include", "-I/usr/local/include/freetype2"],
+            cflags=["-O3", "-Wall", "-Werror", "-g"],
+            includes=["../include", "/usr/local/include/freetype2"],
             lib="X11 Xft")
 
 # vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=python
