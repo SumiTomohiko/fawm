@@ -2,12 +2,12 @@
 WAF = ./waf -v
 
 all:
-	$(WAF) build
+	@$(WAF) build
 
 configure:
-	$(WAF) configure
+	@$(WAF) configure
 
 install:
-	$(WAF) install
+	@$(WAF) install
 
 # vim: tabstop=8 shiftwidth=8 noexpandtab
