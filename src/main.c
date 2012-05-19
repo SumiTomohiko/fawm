@@ -30,7 +30,7 @@ struct Frame {
     Pixmap inactive_close_icon;
     Pixmap close_icon;
     XftDraw* draw;
-    Bool wm_destroy_window;
+    Bool wm_delete_window;
     char title[64];
 };
 
@@ -100,6 +100,11 @@ struct WindowManager {
         XftDraw* draw;
         time_t clock;
     } taskbar;
+
+    struct {
+        Atom wm_delete_window;
+        Atom wm_protocols;
+    } atoms;
 
     FILE* log_file; /* For debug */
 };
@@ -387,7 +392,7 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
     frame->inactive_close_icon = create_close_icon(wm, w, unfocused_color);
     frame->close_icon = active_close_icon;
     frame->draw = create_draw(wm, w);
-    frame->wm_destroy_window = False;
+    frame->wm_delete_window = False;
     assert(frame->draw != NULL);
 
     insert_frame(wm, frame);
@@ -404,8 +409,8 @@ focus(WindowManager* wm, Window w)
 static void
 read_protocol(WindowManager* wm, Frame* frame, Atom atom)
 {
-    if (atom == XInternAtom(wm->display, "WM_DELETE_WINDOW", False)) {
-        frame->wm_destroy_window = True;
+    if (atom == wm->atoms.wm_delete_window) {
+        frame->wm_delete_window = True;
     }
 }
 
@@ -665,7 +670,7 @@ close_frame(WindowManager* wm, Frame* frame)
 {
     Display* display = wm->display;
     Window child = frame->child;
-    if (!frame->wm_destroy_window) {
+    if (!frame->wm_delete_window) {
         XKillClient(display, child);
         destroy_frame(wm, frame);
         return;
@@ -674,9 +679,9 @@ close_frame(WindowManager* wm, Frame* frame)
     bzero(&e, sizeof(e));
     e.xclient.type = ClientMessage;
     e.xclient.window = child;
-    e.xclient.message_type = XInternAtom(display, "WM_PROTOCOLS", False);
+    e.xclient.message_type = wm->atoms.wm_protocols;
     e.xclient.format = 32;
-    e.xclient.data.l[0] = XInternAtom(display, "WM_DELETE_WINDOW", False);
+    e.xclient.data.l[0] = wm->atoms.wm_delete_window;
     e.xclient.data.l[1] = CurrentTime;
     XSendEvent(display, child, False, 0, &e);
 }
@@ -1470,6 +1475,12 @@ open_log(const char* log_file)
     return fp;
 }
 
+static Atom
+intern(WindowManager* wm, const char* name)
+{
+    return XInternAtom(wm->display, name, False);
+}
+
 static void
 setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
 {
@@ -1489,6 +1500,8 @@ setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
     setup_cursors(wm);
     setup_popup_menu(wm);
     setup_taskbar(wm);
+    wm->atoms.wm_delete_window = intern(wm, "WM_DELETE_WINDOW");
+    wm->atoms.wm_protocols = intern(wm, "WM_PROTOCOLS");
 }
 
 static void
