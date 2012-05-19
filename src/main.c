@@ -134,7 +134,7 @@ output_log(WindowManager* wm, const char* fmt, ...)
     va_end(ap);
 }
 
-#define LOG_HEAD_FMT "%s:%u:%u "
+#define LOG_HEAD_FMT "%s:%u [%u] "
 #define LOG_HEAD __FILE__, __LINE__, getpid()
 #define LOG(wm, fmt, ...) \
     output_log(wm, LOG_HEAD_FMT fmt, LOG_HEAD, __VA_ARGS__)
