@@ -6,6 +6,6 @@ def build(bld):
             target="uwm",
             cflags=["-O3", "-Wall", "-Werror", "-g"],
             includes=["../include", "/usr/local/include/freetype2"],
-            lib="X11 Xft")
+            lib=["X11", "Xft"])
 
 # vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=python
