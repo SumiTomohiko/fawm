@@ -1,7 +1,6 @@
 
-def build(bld):
-    bld(
-            features=["c", "cprogram"],
+def build(ctx):
+    ctx.program(
             source="main.c",
             target="uwm",
             cflags=["-O3", "-Wall", "-Werror", "-g"],
