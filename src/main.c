@@ -1692,7 +1692,7 @@ setup_popup_menu(WindowManager* wm)
         wm,
         display, DefaultRootWindow(display),
         0, 0,
-        42, 42, /* They are dummy. They will be defined after. */
+        42, 42, /* They are dummy. They will be defined later. */
         wm->border_size,
         BlackPixel(display, screen), WhitePixel(display, screen));
     LOG(wm, "popup menu: 0x%08x", w);
