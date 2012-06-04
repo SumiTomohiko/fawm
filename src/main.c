@@ -697,9 +697,24 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
 }
 
 static void
-focus(WindowManager* wm, Window w)
+remove_frame(WindowManager* wm, Frame* frame)
 {
-    x_set_input_focus(wm, wm->display, w, RevertToNone, CurrentTime);
+    frame->prev->next = frame->next;
+    frame->next->prev = frame->prev;
+}
+
+static void
+move_frame_to_head(WindowManager* wm, Frame* frame)
+{
+    remove_frame(wm, frame);
+    insert_frame(wm, frame);
+}
+
+static void
+focus(WindowManager* wm, Frame* frame)
+{
+    move_frame_to_head(wm, frame);
+    x_set_input_focus(wm, wm->display, frame->child, RevertToNone, CurrentTime);
 }
 
 static void
@@ -750,7 +765,7 @@ reparent_window(WindowManager* wm, Window w)
 
     x_map_window(wm, display, frame->window);
     x_map_window(wm, display, w);
-    focus(wm, frame->child);
+    focus(wm, frame);
     x_add_to_save_set(wm, display, w);
 }
 
@@ -792,13 +807,6 @@ alloc_color(WindowManager* wm, const char* name)
 }
 
 static void
-remove_frame(WindowManager* wm, Frame* frame)
-{
-    frame->prev->next = frame->next;
-    frame->next->prev = frame->prev;
-}
-
-static void
 free_frame(WindowManager* wm, Frame* frame)
 {
     remove_frame(wm, frame);
@@ -836,6 +844,12 @@ process_destroy_notify(WindowManager* wm, XDestroyWindowEvent* e)
         return;
     }
     destroy_frame(wm, frame);
+
+    Frame* top = wm->frames->next;
+    if (is_sentinel_frame(top)) {
+        return;
+    }
+    focus(wm, top);
 }
 
 static void
@@ -1005,7 +1019,7 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
     Frame* frame = search_frame_of_child(wm, w);
     if (frame != NULL) {
         x_raise_window(wm, display, frame->window);
-        focus(wm, w);
+        focus(wm, frame);
         x_allow_events(wm, display, ReplayPointer, CurrentTime);
         return;
     }
@@ -1018,7 +1032,7 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         return;
     }
     x_raise_window(wm, display, w);
-    focus(wm, frame->child);
+    focus(wm, frame);
     grasp_frame(wm, detect_frame_position(wm, w, x, y), w, x, y);
 }
 
