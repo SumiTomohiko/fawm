@@ -5,8 +5,7 @@ VERSION = "0.1.0"
 def options(ctx):
     ctx.load("compiler_c")
 
-def configure(ctx):
-    ctx.load("compiler_c")
+configure = options
 
 def build(ctx):
     ctx.recurse("src")
