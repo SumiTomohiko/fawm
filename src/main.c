@@ -676,7 +676,6 @@ static Frame*
 create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
 {
     Display* display = wm->display;
-    int screen = DefaultScreen(display);
     int width = child_width + compute_frame_width(wm);
     int height = child_height + compute_frame_height(wm);
     int focused_color = wm->focused_foreground_color;
@@ -686,7 +685,7 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
         x, y,
         width, height,
         wm->border_size,
-        BlackPixel(display, screen), focused_color);
+        BlackPixel(display, DefaultScreen(display)), focused_color);
     change_frame_event_mask(wm, w);
 
     Frame* frame = alloc_frame();
