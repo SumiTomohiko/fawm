@@ -58,6 +58,7 @@ struct WindowManager {
     unsigned long focused_foreground_color;
     unsigned long unfocused_foreground_color;
     int border_size;
+    int client_border_size;
     int frame_size;
     int title_height;
     int resizable_corner_size;
@@ -629,13 +630,21 @@ insert_frame(WindowManager* wm, Frame* frame)
 static int
 compute_frame_width(WindowManager* wm)
 {
-    return 2 * wm->frame_size;
+    /**
+     * Name of this function is "compute_frame_width", but this returns value
+     * including client borders size.
+     */
+    return 2 * (wm->frame_size + wm->client_border_size);
 }
 
 static int
 compute_frame_height(WindowManager* wm)
 {
-    return wm->title_height + 3 * wm->frame_size;
+    /**
+     * Name of this function is "compute_frame_height", but this returns value
+     * including client borders size.
+     */
+    return wm->title_height + 3 * wm->frame_size + 2 * wm->client_border_size;
 }
 
 static XftDraw*
@@ -755,7 +764,7 @@ reparent_window(WindowManager* wm, Window w)
     int frame_size = wm->frame_size;
     int x = frame_size;
     int y = 2 * frame_size + wm->title_height;
-    x_set_window_border_width(wm, display, w, 0);
+    x_set_window_border_width(wm, display, w, wm->client_border_size);
     Window parent = frame->window;
     LOG(wm, "Reparented: frame=0x%08x, child=0x%08x", parent, w);
     x_reparent_window(wm, display, w, parent, x, y);
@@ -1828,7 +1837,7 @@ setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
     wm->running = True;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
     wm->unfocused_foreground_color = alloc_color(wm, "grey");
-    wm->border_size = 1;
+    wm->border_size = wm->client_border_size = 1;
     wm->frame_size = 4;
     wm->title_height = 16;
     wm->resizable_corner_size = 32;
