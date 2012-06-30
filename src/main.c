@@ -1376,18 +1376,19 @@ do_fork()
 }
 
 static void
-fork_child(const char* cmd)
+fork_child(char* cmd)
 {
     pid_t pid = do_fork();
+    char* argv[] = { "/bin/sh", "-c", cmd, NULL };
     if (pid == 0) {
-        execlp(cmd, cmd, NULL);
+        execv(argv[0], argv);
         exit(1);
     }
     exit(0);
 }
 
 static void
-execute(WindowManager* wm, const char* cmd)
+execute(WindowManager* wm, char* cmd)
 {
     if (strcmp(cmd, "exit") == 0) {
         wm->running = False;
@@ -1929,7 +1930,16 @@ x_select_input(WindowManager* wm, Display* display, Window w, int event_mask)
 }
 
 static void
-wm_main(WindowManager* wm, Display* display, const char* log_file)
+execute_startup(WindowManager* wm, int argc, char* argv[])
+{
+    int i;
+    for (i = 0; i < argc; i++) {
+        execute(wm, argv[i]);
+    }
+}
+
+static void
+wm_main(WindowManager* wm, Display* display, const char* log_file, int argc, char* argv[])
 {
     XSetErrorHandler(error_handler);
 
@@ -1941,6 +1951,8 @@ wm_main(WindowManager* wm, Display* display, const char* log_file)
     long mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | SubstructureRedirectMask;
     x_select_input(wm, display, root, mask);
     LOG(wm, "root window=0x%08x", root);
+
+    execute_startup(wm, argc, argv);
 
     while (wm->running) {
         wait_event(wm);
@@ -1984,7 +1996,7 @@ main(int argc, char* argv[])
     }
 
     WindowManager wm;
-    wm_main(&wm, display, log_file);
+    wm_main(&wm, display, log_file, argc - optind, argv + optind);
 
     XCloseDisplay(display);
 
