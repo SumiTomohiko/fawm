@@ -846,8 +846,7 @@ destroy_frame(WindowManager* wm, Frame* frame)
 static void
 process_destroy_notify(WindowManager* wm, XDestroyWindowEvent* e)
 {
-    Window w = e->event;
-    Frame* frame = search_frame(wm, w);
+    Frame* frame = search_frame_of_child(wm, e->window);
     if (frame == NULL) {
         return;
     }
