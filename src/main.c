@@ -100,6 +100,7 @@ struct WindowManager {
         Window window;
         XftDraw* draw;
         XftFont* clock_font;
+        int clock_margin;
         time_t clock;
     } taskbar;
 
@@ -455,6 +456,13 @@ xft_draw_string_utf8(WindowManager* wm, XftDraw* draw, XftColor* color, XftFont*
 {
     LOG(wm, "XftDrawStringUtf8(draw, color, pub, x=%d, y=%d, string, len=%d)", x, y, len);
     return XftDrawStringUtf8(draw, color, pub, x, y, string, len);
+}
+
+static void
+xft_text_extents_utf8(WindowManager* wm, Display* display, XftFont* font, XftChar8* string, int len, XGlyphInfo* extents)
+{
+    LOG(wm, "XftTextExtentsUtf8(display=0x%08x, font=0x%08x, string=\"%s\", len=%d, extents=%p)", display, font, string, len, extents);
+    XftTextExtentsUtf8(display, font, string, len, extents);
 }
 
 static XftFont*
@@ -1332,12 +1340,21 @@ draw_taskbar(WindowManager* wm)
     char text[64];
     strftime(text, array_sizeof(text), "%Y-%m-%dT%H:%M", &tm);
 
+    Display* display = wm->display;
+    unsigned int width;
+    unsigned int _;
+    get_geometry(wm, DefaultRootWindow(display), &width, &_);
+
+    XGlyphInfo glyph;
+    XftFont* font = wm->taskbar.clock_font;
+    int len = strlen(text);
+    xft_text_extents_utf8(wm, display, font, (XftChar8*)text, len, &glyph);
+    int x = width - glyph.width - wm->taskbar.clock_margin;
+
     XftDraw* draw = wm->taskbar.draw;
     XftColor* color = &wm->title_color;
-    XftFont* font = wm->taskbar.clock_font;
     int y = font->ascent;
-    int len = strlen(text);
-    xft_draw_string_utf8(wm, draw, color, font, 0, y, (XftChar8*)text, len);
+    xft_draw_string_utf8(wm, draw, color, font, x, y, (XftChar8*)text, len);
 }
 
 static void
@@ -1770,6 +1787,7 @@ do { \
     OPEN_FONT(clock_font, "VL Gothic-18");
     wm->taskbar.clock_font = clock_font;
 #undef OPEN_FONT
+    wm->taskbar.clock_margin = 8;
 
     Visual* visual = DefaultVisual(display, screen);
     Colormap colormap = DefaultColormap(display, screen);
