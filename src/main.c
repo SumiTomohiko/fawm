@@ -99,6 +99,7 @@ struct WindowManager {
     struct {
         Window window;
         XftDraw* draw;
+        XftFont* clock_font;
         time_t clock;
     } taskbar;
 
@@ -1333,7 +1334,7 @@ draw_taskbar(WindowManager* wm)
 
     XftDraw* draw = wm->taskbar.draw;
     XftColor* color = &wm->title_color;
-    XftFont* font = wm->title_font;
+    XftFont* font = wm->taskbar.clock_font;
     int y = font->ascent;
     int len = strlen(text);
     xft_draw_string_utf8(wm, draw, color, font, 0, y, (XftChar8*)text, len);
@@ -1753,13 +1754,23 @@ setup_title_font(WindowManager* wm)
 {
     Display* display = wm->display;
     int screen = DefaultScreen(display);
-    const char* name = "VL PGothic-18";
-    XftFont* title_font = xft_font_open_name(wm, display, screen, name);
-    if (title_font == NULL) {
-        print_error("Cannot find font (XftFontOpenName failed): %s", name);
-        exit(1);
-    }
+
+#define OPEN_FONT(var, name) \
+XftFont* var; \
+do { \
+        var = xft_font_open_name(wm, display, screen, (name)); \
+        if (var == NULL) { \
+            const char* fmt = "Cannot find font (XftFontOpenName failed): %s"; \
+            print_error(fmt, (name)); \
+            exit(1); \
+        } \
+} while (0)
+    OPEN_FONT(title_font, "VL PGothic-18");
     wm->title_font = title_font;
+    OPEN_FONT(clock_font, "VL Gothic-18");
+    wm->taskbar.clock_font = clock_font;
+#undef OPEN_FONT
+
     Visual* visual = DefaultVisual(display, screen);
     Colormap colormap = DefaultColormap(display, screen);
     XftColor* result = &wm->title_color;
