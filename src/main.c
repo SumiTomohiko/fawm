@@ -88,6 +88,7 @@ struct WindowManager {
         GC title_gc;
         GC selected_gc;
         XftDraw* draw;
+        int margin;
         int items_num;
         int selected_item;
         struct {
@@ -918,7 +919,7 @@ map_popup_menu(WindowManager* wm, int x, int y)
 {
     Display* display = wm->display;
     Window popup_menu = wm->popup_menu.window;
-    x_move_window(wm, display, popup_menu, x - 16, y - 16);
+    x_move_window(wm, display, popup_menu, x - 16, y + 8);
     x_map_raised(wm, display, popup_menu);
 }
 
@@ -1080,41 +1081,36 @@ detect_selected_popup_item(WindowManager* wm, int x, int y)
     if (!is_region_inside(wa.x, wa.y, wa.width, wa.height, x, y)) {
         return -1;
     }
-    int index = (y - wa.y) / compute_font_height(wm->title_font) - 1;
+    int index = (y - wa.y) / compute_font_height(wm->title_font);
     return wm->popup_menu.items_num <= index ? -1 : index;
 }
-
-const char* popup_title = "Applications";
 
 static void
 draw_popup_menu(WindowManager* wm)
 {
-    Display* display = wm->display;
     Window w = wm->popup_menu.window;
-    GC title_gc = wm->popup_menu.title_gc;
     unsigned int window_width;
     unsigned int _;
     get_geometry(wm, w, &window_width, &_);
+
     XftFont* font = wm->title_font;
     int item_height = font->ascent + font->descent;
-    x_fill_rectagle(wm, display, w, title_gc, 0, 0, window_width, item_height);
 
-    int x = 0;
     int selected_item = wm->popup_menu.selected_item;
-    int y = item_height * (selected_item + 1);
     if (0 <= selected_item) {
+        Display* display = wm->display;
         GC gc = wm->popup_menu.selected_gc;
-        x_fill_rectagle(wm, display, w, gc, x, y, window_width, item_height);
+        int y = item_height * selected_item;
+        x_fill_rectagle(wm, display, w, gc, 0, y, window_width, item_height);
     }
 
     XftDraw* draw = wm->popup_menu.draw;
-    y = font->ascent;
-    draw_title_font_string(wm, draw, x, y, popup_title);
+    int y = - font->descent;
     int i;
     for (i = 0; i < wm->popup_menu.items_num; i++) {
         y += item_height;
         const char* text = wm->popup_menu.items[i].caption;
-        draw_title_font_string(wm, draw, x, y, text);
+        draw_title_font_string(wm, draw, wm->popup_menu.margin, y, text);
     }
 }
 
@@ -1330,6 +1326,14 @@ get_last_event(WindowManager* wm, Window w, int event_type, XEvent* e)
     while (x_check_typed_window_event(wm, display, w, event_type, e));
 }
 
+static int
+compute_text_width(WindowManager* wm, XftFont* font, const char* text, int len)
+{
+    XGlyphInfo glyph;
+    xft_text_extents_utf8(wm, wm->display, font, (XftChar8*)text, len, &glyph);
+    return glyph.width;
+}
+
 static void
 draw_taskbar(WindowManager* wm)
 {
@@ -1345,11 +1349,10 @@ draw_taskbar(WindowManager* wm)
     unsigned int _;
     get_geometry(wm, DefaultRootWindow(display), &width, &_);
 
-    XGlyphInfo glyph;
     XftFont* font = wm->taskbar.clock_font;
     int len = strlen(text);
-    xft_text_extents_utf8(wm, display, font, (XftChar8*)text, len, &glyph);
-    int x = width - glyph.width - wm->taskbar.clock_margin;
+    int margin = wm->taskbar.clock_margin;
+    int x = width - compute_text_width(wm, font, text, len) - margin;
 
     XftDraw* draw = wm->taskbar.draw;
     XftColor* color = &wm->title_color;
@@ -1723,6 +1726,20 @@ change_popup_menu_event_mask(WindowManager* wm, Window w)
     change_event_mask_exposure(wm, w);
 }
 
+static int
+compute_popup_menu_width(WindowManager* wm)
+{
+    int max = 0;
+    int i;
+    for (i = 0; i < wm->popup_menu.items_num; i++) {
+        const char* caption = wm->popup_menu.items[i].caption;
+        int len = strlen(caption);
+        int width = compute_text_width(wm, wm->title_font, caption, len);
+        max = max < width ? width : max;
+    }
+    return max;
+}
+
 static void
 setup_popup_menu(WindowManager* wm)
 {
@@ -1750,6 +1767,7 @@ setup_popup_menu(WindowManager* wm)
 
     wm->popup_menu.draw = create_draw(wm, w);
     assert(wm->popup_menu.draw != NULL);
+    wm->popup_menu.margin = 8;
 
     wm->popup_menu.items_num = array_sizeof(wm->popup_menu.items);
     strcpy(wm->popup_menu.items[0].caption, "Firefox");
@@ -1759,10 +1777,8 @@ setup_popup_menu(WindowManager* wm)
     strcpy(wm->popup_menu.items[2].caption, "exit");
     strcpy(wm->popup_menu.items[2].command, "exit");
 
-    XftFont* font = wm->title_font;
-    int width = font->max_advance_width * strlen(popup_title);
-    int font_height = compute_font_height(font);
-    int height = font_height * (wm->popup_menu.items_num + 1);
+    int width = 2 * wm->popup_menu.margin + compute_popup_menu_width(wm);
+    int height = compute_font_height(wm->title_font) * wm->popup_menu.items_num;
     x_resize_window(wm, display, w, width, height);
 }
 
