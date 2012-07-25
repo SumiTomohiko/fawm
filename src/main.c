@@ -120,7 +120,7 @@ print_message(FILE* fp, const char* fmt, va_list ap)
     if (fp == NULL) {
         return;
     }
-    char buf[128];
+    char buf[512];
     vsnprintf(buf, array_sizeof(buf), fmt, ap);
     fprintf(fp, "%s\n", buf);
     fflush(fp);
