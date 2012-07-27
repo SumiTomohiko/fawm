@@ -845,12 +845,28 @@ x_destroy_window(WindowManager* wm, Display* display, Window w)
     return XDestroyWindow(display, w);
 }
 
+static Bool
+x_check_window_event(WindowManager* wm, Display* display, Window w, long event_mask, XEvent* event_return)
+{
+    LOG(wm, "XCheckWindowEvent(display, w=0x%08x, event_mask=0x%08x, event_return=%p)", w, event_mask, event_return);
+    return XCheckWindowEvent(display, w, event_mask, event_return);
+}
+
+static void
+discard_queued_events(WindowManager* wm, Window w)
+{
+    XEvent _;
+    while (x_check_window_event(wm, wm->display, w, ~0, &_)) {
+    }
+}
+
 static void
 destroy_frame(WindowManager* wm, Frame* frame)
 {
     Window w = frame->window;
     free_frame(wm, frame);
     x_destroy_window(wm, wm->display, w);
+    discard_queued_events(wm, w);
 }
 
 static void
