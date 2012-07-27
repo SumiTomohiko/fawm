@@ -1007,7 +1007,6 @@ close_frame(WindowManager* wm, Frame* frame)
     Window child = frame->child;
     if (!frame->wm_delete_window) {
         x_kill_client(wm, display, child);
-        destroy_frame(wm, frame);
         return;
     }
     XEvent e;
