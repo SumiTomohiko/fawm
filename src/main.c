@@ -143,6 +143,10 @@ output_log(WindowManager* wm, const char* fmt, ...)
 #define LOG(wm, fmt, ...) \
     output_log(wm, LOG_HEAD_FMT fmt, LOG_HEAD, __VA_ARGS__)
 #define LOG0(wm, msg) output_log(wm, LOG_HEAD_FMT msg, LOG_HEAD)
+#define LOG_X(filename, lineno, wm, fmt, ...) \
+    output_log(wm, LOG_HEAD_FMT fmt, filename, lineno, getpid(), __VA_ARGS__)
+#define LOG_X0(filename, lineno, wm, msg) \
+    output_log(wm, LOG_HEAD_FMT msg, filename, lineno, getpid())
 
 static void
 print_error(const char* fmt, ...)
@@ -180,304 +184,427 @@ search_frame(WindowManager* wm, Window w)
 }
 
 static int
-x_add_to_save_set(WindowManager* wm, Display* display, Window w)
+__XAddToSaveSet__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w)
 {
-    LOG(wm, "XAddToSaveSet(display, w=0x%08x)", w);
+    LOG_X(filename, lineno, wm, "XAddToSaveSet(display, w=0x%08x)", w);
     return XAddToSaveSet(display, w);
 }
 
+#define XXAddToSaveSet(wm, a, b) \
+    __XAddToSaveSet__(__FILE__, __LINE__, (wm), (a), (b))
+
 static Status
-x_alloc_named_color(WindowManager* wm, Display* display, Colormap colormap, const char* color_name, XColor* color_def_return, XColor* exact_def_return)
+__XAllocNamedColor__(const char* filename, int lineno, WindowManager* wm, Display* display, Colormap colormap, const char* color_name, XColor* color_def_return, XColor* exact_def_return)
 {
-    LOG(wm, "XAllocNamedColor(display, colormap, color_name=\"%s\", color_def_return, exact_def_return)", color_name);
+    LOG_X(filename, lineno, wm, "XAllocNamedColor(display, colormap, color_name=\"%s\", color_def_return, exact_def_return)", color_name);
     return XAllocNamedColor(display, colormap, color_name, color_def_return, exact_def_return);
 }
 
+#define XXAllocNamedColor(wm, a, b, c, d, e) \
+    __XAllocNamedColor__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e))
+
 static int
-x_allow_events(WindowManager* wm, Display* display, int event_mode, Time time)
+__XAllowEvents__(const char* filename, int lineno, WindowManager* wm, Display* display, int event_mode, Time time)
 {
-    LOG0(wm, "XAllowEvents(display, event_mode, time)");
+    LOG_X0(filename, lineno, wm, "XAllowEvents(display, event_mode, time)");
     return XAllowEvents(display, event_mode, time);
 }
 
+#define XXAllowEvents(wm, a, b, c) \
+    __XAllowEvents__(__FILE__, __LINE__, (wm), (a), (b), (c))
+
 static int
-x_change_window_attributes(WindowManager* wm, Display* display, Window w, unsigned long valuemask, XSetWindowAttributes* attributes)
+__XChangeWindowAttributes__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, unsigned long valuemask, XSetWindowAttributes* attributes)
 {
-    LOG(wm, "XChangeWindowAttributes(display, w=0x%08x, valuemask, attributes)", w);
+    LOG_X(filename, lineno, wm, "XChangeWindowAttributes(display, w=0x%08x, valuemask, attributes)", w);
     return XChangeWindowAttributes(display, w, valuemask, attributes);
 }
 
+#define XXChangeWindowAttributes(wm, a, b, c, d) \
+    __XChangeWindowAttributes__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static Bool
-x_check_typed_window_event(WindowManager* wm, Display* display, Window w, int event_type, XEvent* event_return)
+__XCheckTypedWindowEvent__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, int event_type, XEvent* event_return)
 {
-    LOG(wm, "XCheckTypedWindowEvent(display, w=0x%08x, event_type, event_return)", w);
+    LOG_X(filename, lineno, wm, "XCheckTypedWindowEvent(display, w=0x%08x, event_type, event_return)", w);
     return XCheckTypedWindowEvent(display, w, event_type, event_return);
 }
 
+#define XXCheckTypedWindowEvent(wm, a, b, c, d) \
+    __XCheckTypedWindowEvent__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static int
-x_configure_window(WindowManager* wm, Display* display, Window w, unsigned value_mask, XWindowChanges* changes)
+__XConfigureWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, unsigned value_mask, XWindowChanges* changes)
 {
-    LOG(wm, "XConfigureWindow(display, w=0x%08x, value_mask, changes)", w);
+    LOG_X(filename, lineno, wm, "XConfigureWindow(display, w=0x%08x, value_mask, changes)", w);
     return XConfigureWindow(display, w, value_mask, changes);
 }
 
+#define XXConfigureWindow(wm, a, b, c, d) \
+    __XConfigureWindow__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static int
-x_copy_area(WindowManager* wm, Display* display, Drawable src, Drawable dest, GC gc, int src_x, int src_y, unsigned int width, unsigned int height, int dest_x, int dest_y)
+__XCopyArea__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable src, Drawable dest, GC gc, int src_x, int src_y, unsigned int width, unsigned int height, int dest_x, int dest_y)
 {
-    LOG(wm, "XCopyArea(display, src=0x%08x, dest=0x%08x, gc, src_x=%d, src_y=%d, width=%d, height=%d, dest_x=%d, dest_y=%d)", src, dest, src_x, src_y, width, height, dest_x, dest_y);
+    LOG_X(filename, lineno, wm, "XCopyArea(display, src=0x%08x, dest=0x%08x, gc, src_x=%d, src_y=%d, width=%d, height=%d, dest_x=%d, dest_y=%d)", src, dest, src_x, src_y, width, height, dest_x, dest_y);
     return XCopyArea(display, src, dest, gc, src_x, src_y, width, height, dest_x, dest_y);
 }
 
+#define XXCopyArea(wm, a, b, c, d, e, f, g, h, i, j) \
+    __XCopyArea__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g), (h), (i), (j))
+
 static Cursor
-x_create_font_cursor(WindowManager* wm, Display* display, unsigned int shape)
+__XCreateFontCursor__(const char* filename, int lineno, WindowManager* wm, Display* display, unsigned int shape)
 {
-    LOG(wm, "XCreateFontCursor(display, shape=%d)", shape);
+    LOG_X(filename, lineno, wm, "XCreateFontCursor(display, shape=%d)", shape);
     return XCreateFontCursor(display, shape);
 }
 
+#define XXCreateFontCursor(wm, a, b) \
+    __XCreateFontCursor__(__FILE__, __LINE__, (wm), (a), (b))
+
 static GC
-x_create_gc(WindowManager* wm, Display* display, Drawable d, unsigned long valuemask, XGCValues* values)
+__XCreateGC__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, unsigned long valuemask, XGCValues* values)
 {
-    LOG(wm, "XCreateGC(display, d=0x%08x, valuemask, values)", d);
+    LOG_X(filename, lineno, wm, "XCreateGC(display, d=0x%08x, valuemask, values)", d);
     return XCreateGC(display, d, valuemask, values);
 }
 
+#define XXCreateGC(wm, a, b, c, d) \
+    __XCreateGC__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static Pixmap
-x_create_pixmap_from_bitmap_data(WindowManager* wm, Display* display, Drawable d, char* data, unsigned int width, unsigned int height, unsigned long fg, unsigned long bg, unsigned int depth)
+__XCreatePixmapFromBitmapData__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, char* data, unsigned int width, unsigned int height, unsigned long fg, unsigned long bg, unsigned int depth)
 {
-    LOG(wm, "XCreatePixmapFromBitmapData(display, d=0x%08x, data, width=%u, height=%u, fg, bg, depth=%u)", d, width, height, depth);
+    LOG_X(filename, lineno, wm, "XCreatePixmapFromBitmapData(display, d=0x%08x, data, width=%u, height=%u, fg, bg, depth=%u)", d, width, height, depth);
     return XCreatePixmapFromBitmapData(display, d, data, width, height, fg, bg, depth);
 }
 
+#define XXCreatePixmapFromBitmapData(wm, a, b, c, d, e, f, g, h) \
+    __XCreatePixmapFromBitmapData__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g), (h))
+
 static Window
-x_create_simple_window(WindowManager* wm, Display* display, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int border_width, unsigned long border, unsigned long background)
+__XCreateSimpleWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int border_width, unsigned long border, unsigned long background)
 {
-    LOG(wm, "XCreateSimpleWindow(display, parent=0x%08x, x=%d, y=%d, width=%u, height=%u, border_width=%u, border, background)", parent, x, y, width, height, border_width);
+    LOG_X(filename, lineno, wm, "XCreateSimpleWindow(display, parent=0x%08x, x=%d, y=%d, width=%u, height=%u, border_width=%u, border, background)", parent, x, y, width, height, border_width);
     return XCreateSimpleWindow(display, parent, x, y, width, height, border_width, border, background);
 }
 
+#define XXCreateSimpleWindow(wm, a, b, c, d, e, f, g, h, i) \
+    __XCreateSimpleWindow__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g), (h), (i))
+
 static int
-x_define_cursor(WindowManager* wm, Display* display, Window w, Cursor cursor)
+__XDefineCursor__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, Cursor cursor)
 {
-    LOG(wm, "XDefineCursor(display, w=0x%08x, cursor)", w);
+    LOG_X(filename, lineno, wm, "XDefineCursor(display, w=0x%08x, cursor)", w);
     return XDefineCursor(display, w, cursor);
 }
 
+#define XXDefineCursor(wm, a, b, c) \
+    __XDefineCursor__(__FILE__, __LINE__, (wm), (a), (b), (c))
+
 static int
-x_draw_line(WindowManager* wm, Display* display, Drawable d, GC gc, int x1, int y1, int x2, int y2)
+__XDrawLine__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, GC gc, int x1, int y1, int x2, int y2)
 {
-    LOG(wm, "XDrawLine(display, d=0x%08x, gc, x1=%d, y1=%d, x2=%d, y2=%d)", d, x1, y1, x2, y2);
+    LOG_X(filename, lineno, wm, "XDrawLine(display, d=0x%08x, gc, x1=%d, y1=%d, x2=%d, y2=%d)", d, x1, y1, x2, y2);
     return XDrawLine(display, d, gc, x1, y1, x2, y2);
 }
 
+#define XXDrawLine(wm, a, b, c, d, e, f, g) \
+    __XDrawLine__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g))
+
 static int
-x_fill_rectagle(WindowManager* wm, Display* display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height)
+__XFillRectangle__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height)
 {
-    LOG(wm, "XFillRectangle(display, d=0x%08x, gc, x=%d, y=%d, width=%u, height=%u)", d, x, y, width, height);
+    LOG_X(filename, lineno, wm, "XFillRectangle(display, d=0x%08x, gc, x=%d, y=%d, width=%u, height=%u)", d, x, y, width, height);
     return XFillRectangle(display, d, gc, x, y, width, height);
 }
 
+#define XXFillRectangle(wm, a, b, c, d, e, f, g) \
+    __XFillRectangle__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g))
+
 static int
-x_free_pixmap(WindowManager* wm, Display* display, Pixmap pixmap)
+__XFreePixmap__(const char* filename, int lineno, WindowManager* wm, Display* display, Pixmap pixmap)
 {
-    LOG0(wm, "XFreePixmap(display, pixmap)");
+    LOG_X0(filename, lineno, wm, "XFreePixmap(display, pixmap)");
     return XFreePixmap(display, pixmap);
 }
 
+#define XXFreePixmap(wm, a, b) \
+    __XFreePixmap__(__FILE__, __LINE__, (wm), (a), (b))
+
 static Status
-x_get_geomerty(WindowManager* wm, Display* display, Drawable d, Window* root_return, int* x_return, int* y_return, unsigned int* width_return, unsigned int* height_return, unsigned int* border_width_return, unsigned int* depth_return)
+__XGetGeometry__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, Window* root_return, int* x_return, int* y_return, unsigned int* width_return, unsigned int* height_return, unsigned int* border_width_return, unsigned int* depth_return)
 {
-    LOG(wm, "XGetGeometry(display, d=0x%08x, root_return, x_return, y_return, width_return, height_return, border_width_return, depth_return)", d);
+    LOG_X(filename, lineno, wm, "XGetGeometry(display, d=0x%08x, root_return, x_return, y_return, width_return, height_return, border_width_return, depth_return)", d);
     return XGetGeometry(display, d, root_return, x_return, y_return, width_return, height_return, border_width_return, depth_return);
 }
 
+#define XXGetGeometry(wm, a, b, c, d, e, f, g, h, i) \
+    __XGetGeometry__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g), (h), (i))
+
 static Status
-x_get_text_property(WindowManager* wm, Display* display, Window w, XTextProperty* text_prop_return, Atom property)
+__XGetTextProperty__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, XTextProperty* text_prop_return, Atom property)
 {
-    LOG(wm, "XGetTextProperty(display, w=0x%08x, text_prop_return, property)", w);
+    LOG_X(filename, lineno, wm, "XGetTextProperty(display, w=0x%08x, text_prop_return, property)", w);
     return XGetTextProperty(display, w, text_prop_return, property);
 }
 
+#define XXGetTextProperty(wm, a, b, c, d) \
+    __XGetTextProperty__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static Status
-x_get_window_attributes(WindowManager* wm, Display* display, Window w, XWindowAttributes* window_attributes_return)
+__XGetWindowAttributes__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, XWindowAttributes* window_attributes_return)
 {
-    LOG(wm, "XGetWindowAttributes(display, w=0x%08x, window_attributes_return)", w);
+    LOG_X(filename, lineno, wm, "XGetWindowAttributes(display, w=0x%08x, window_attributes_return)", w);
     return XGetWindowAttributes(display, w, window_attributes_return);
 }
 
+#define XXGetWindowAttributes(wm, a, b, c) \
+    __XGetWindowAttributes__(__FILE__, __LINE__, (wm), (a), (b), (c))
+
 static Status
-x_get_wm_protocols(WindowManager* wm, Display* display, Window w, Atom** protocols_return, int* count_return)
+__XGetWMProtocols__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, Atom** protocols_return, int* count_return)
 {
-    LOG(wm, "XGetWMProtocols(display, w=0x%08x, protocols_return, count_return)", w);
+    LOG_X(filename, lineno, wm, "XGetWMProtocols(display, w=0x%08x, protocols_return, count_return)", w);
     return XGetWMProtocols(display, w, protocols_return, count_return);
 }
 
+#define XXGetWMProtocols(wm, a, b, c, d) \
+    __XGetWMProtocols__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static int
-x_grab_button(WindowManager* wm, Display* display, unsigned int button, unsigned int modifiers, Window grab_window, Bool owner_events, unsigned int event_mask, int pointer_mode, int keyboard_mode, Window confine_to, Cursor cursor)
+__XGrabButton__(const char* filename, int lineno, WindowManager* wm, Display* display, unsigned int button, unsigned int modifiers, Window grab_window, Bool owner_events, unsigned int event_mask, int pointer_mode, int keyboard_mode, Window confine_to, Cursor cursor)
 {
-    LOG(wm, "XGrabButton(display, button, modifiers, grab_window=0x%08x, owner_events, event_mask, pointer_mode, keyboard_mode, confine_to=0x%08x, cursor)", grab_window, confine_to);
+    LOG_X(filename, lineno, wm, "XGrabButton(display, button, modifiers, grab_window=0x%08x, owner_events, event_mask, pointer_mode, keyboard_mode, confine_to=0x%08x, cursor)", grab_window, confine_to);
     return XGrabButton(display, button, modifiers, grab_window, owner_events, event_mask, pointer_mode, keyboard_mode, confine_to, cursor);
 }
 
+#define XXGrabButton(wm, a, b, c, d, e, f, g, h, i, j) \
+    __XGrabButton__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g), (h), (i), (j))
+
 static Atom
-x_intern_atom(WindowManager* wm, Display* display, const char* name, Bool only_if_exists)
+__XInternAtom__(const char* filename, int lineno, WindowManager* wm, Display* display, const char* name, Bool only_if_exists)
 {
-    LOG(wm, "XInternAtom(display, name=\"%s\", only_if_exists)", name);
+    LOG_X(filename, lineno, wm, "XInternAtom(display, name=\"%s\", only_if_exists)", name);
     return XInternAtom(display, name, only_if_exists);
 }
 
+#define XXInternAtom(wm, a, b, c) \
+    __XInternAtom__(__FILE__, __LINE__, (wm), (a), (b), (c))
+
 static int
-x_kill_client(WindowManager* wm, Display* display, XID resource)
+__XKillClient__(const char* filename, int lineno, WindowManager* wm, Display* display, XID resource)
 {
-    LOG0(wm, "XKillClient(display, resource)");
+    LOG_X0(filename, lineno, wm, "XKillClient(display, resource)");
     return XKillClient(display, resource);
 }
 
+#define XXKillClient(wm, a, b) \
+    __XKillClient__(__FILE__, __LINE__, (wm), (a), (b))
+
 static int
-x_map_raised(WindowManager* wm, Display* display, Window w)
+__XMapRaised__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w)
 {
-    LOG(wm, "XMapRaised(display, w=0x%08x)", w);
+    LOG_X(filename, lineno, wm, "XMapRaised(display, w=0x%08x)", w);
     return XMapRaised(display, w);
 }
 
+#define XXMapRaised(wm, a, b) __XMapRaised__(__FILE__, __LINE__, (wm), (a), (b))
+
 static int
-x_map_window(WindowManager* wm, Display* display, Window w)
+__XMapWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w)
 {
-    LOG(wm, "XMapWindow(display, w=0x%08x)", w);
+    LOG_X(filename, lineno, wm, "XMapWindow(display, w=0x%08x)", w);
     return XMapWindow(display, w);
 }
 
+#define XXMapWindow(wm, a, b) __XMapWindow__(__FILE__, __LINE__, (wm), (a), (b))
+
 static int
-x_move_resize_window(WindowManager* wm, Display* display, Window w, int x, int y, unsigned width, unsigned height)
+__XMoveResizeWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, int x, int y, unsigned width, unsigned height)
 {
-    LOG(wm, "XMoveResizeWindow(display, w=0x%08x, x=%d, y=%d, width=%u, height=%u)", w, x, y, width, height);
+    LOG_X(filename, lineno, wm, "XMoveResizeWindow(display, w=0x%08x, x=%d, y=%d, width=%u, height=%u)", w, x, y, width, height);
     return XMoveResizeWindow(display, w, x, y, width, height);
 }
 
+#define XXMoveResizeWindow(wm, a, b, c, d, e, f) \
+    __XMoveResizeWindow__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f))
+
 static int
-x_move_window(WindowManager* wm, Display* display, Window w, int x, int y)
+__XMoveWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, int x, int y)
 {
-    LOG(wm, "XMoveWindow(display, w=0x%08x, x=%d, y=%d)", w, x, y);
+    LOG_X(filename, lineno, wm, "XMoveWindow(display, w=0x%08x, x=%d, y=%d)", w, x, y);
     return XMoveWindow(display, w, x, y);
 }
 
+#define XXMoveWindow(wm, a, b, c, d) \
+    __XMoveWindow__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static Status
-x_query_tree(WindowManager* wm, Display* display, Window w, Window* root_return, Window* parent_return, Window** children_return, unsigned int* nchildren_return)
+__XQueryTree__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, Window* root_return, Window* parent_return, Window** children_return, unsigned int* nchildren_return)
 {
-    LOG(wm, "XQueryTree(display, w=0x%08x, root_return, parent_return, children_return, nchildren_return)", w);
+    LOG_X(filename, lineno, wm, "XQueryTree(display, w=0x%08x, root_return, parent_return, children_return, nchildren_return)", w);
     return XQueryTree(display, w, root_return, parent_return, children_return, nchildren_return);
 }
 
+#define XXQueryTree(wm, a, b, c, d, e, f) \
+    __XQueryTree__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f))
+
 static int
-x_raise_window(WindowManager* wm, Display* display, Window w)
+__XRaiseWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w)
 {
-    LOG(wm, "XRaiseWindow(display, w=0x%08x)", w);
+    LOG_X(filename, lineno, wm, "XRaiseWindow(display, w=0x%08x)", w);
     return XRaiseWindow(display, w);
 }
 
+#define XXRaiseWindow(wm, a, b) \
+    __XRaiseWindow__(__FILE__, __LINE__, (wm), (a), (b))
+
 static int
-x_reparent_window(WindowManager* wm, Display* display, Window w, Window parent,  int x, int y)
+__XReparentWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, Window parent,  int x, int y)
 {
-    LOG(wm, "XReparentWindow(display, w=0x%08x, parent=0x%08x, x=%d, y=%d)", x, parent, x, y);
+    LOG_X(filename, lineno, wm, "XReparentWindow(display, w=0x%08x, parent=0x%08x, x=%d, y=%d)", x, parent, x, y);
     return XReparentWindow(display, w, parent, x, y);
 }
 
+#define XXReparentWindow(wm, a, b, c, d, e) \
+    __XReparentWindow__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e))
+
 static int
-x_resize_window(WindowManager* wm, Display* display, Window w, unsigned width, unsigned height)
+__XResizeWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, unsigned width, unsigned height)
 {
-    LOG(wm, "XResizeWindow(display, w=0x%08x, width=%u, height=%u)", w, width, height);
+    LOG_X(filename, lineno, wm, "XResizeWindow(display, w=0x%08x, width=%u, height=%u)", w, width, height);
     return XResizeWindow(display, w, width, height);
 }
 
+#define XXResizeWindow(wm, a, b, c, d) \
+    __XResizeWindow__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static Status
-x_send_event(WindowManager* wm, Display* display, Window w, Bool propagate, long event_mask, XEvent* event_send)
+__XSendEvent__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, Bool propagate, long event_mask, XEvent* event_send)
 {
-    LOG(wm, "XSendEvent(display, w=0x%08x, propagate, event_mask, event_send)", w);
+    LOG_X(filename, lineno, wm, "XSendEvent(display, w=0x%08x, propagate, event_mask, event_send)", w);
     return XSendEvent(display, w, propagate, event_mask, event_send);
 }
 
+#define XXSendEvent(wm, a, b, c, d, e) \
+    __XSendEvent__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e))
+
 static int
-x_set_input_focus(WindowManager* wm, Display* display, Window focus, int revert_to, Time time)
+__XSetInputFocus__(const char* filename, int lineno, WindowManager* wm, Display* display, Window focus, int revert_to, Time time)
 {
-    LOG(wm, "XSetInputFocus(display, focus=0x%08x, revert_to, time)", focus);
+    LOG_X(filename, lineno, wm, "XSetInputFocus(display, focus=0x%08x, revert_to, time)", focus);
     return XSetInputFocus(display, focus, revert_to, time);
 }
 
+#define XXSetInputFocus(wm, a, b, c, d) \
+    __XSetInputFocus__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static int
-x_set_window_background(WindowManager* wm, Display* display, Window w, unsigned long background_pixel)
+__XSetWindowBackground__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, unsigned long background_pixel)
 {
-    LOG(wm, "XSetWindowBackground(display, w=0x%08x, background_pixel)", w);
+    LOG_X(filename, lineno, wm, "XSetWindowBackground(display, w=0x%08x, background_pixel)", w);
     return XSetWindowBackground(display, w, background_pixel);
 }
 
+#define XXSetWindowBackground(wm, a, b, c) \
+    __XSetWindowBackground__(__FILE__, __LINE__, (wm), (a), (b), (c))
+
 static int
-x_set_window_border_width(WindowManager* wm, Display* display, Window w, unsigned width)
+__XSetWindowBorderWidth__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, unsigned width)
 {
-    LOG(wm, "XSetWindowBorderWidth(display, w=0x%08x, width=%u)", w, width);
+    LOG_X(filename, lineno, wm, "XSetWindowBorderWidth(display, w=0x%08x, width=%u)", w, width);
     return XSetWindowBorderWidth(display, w, width);
 }
 
+#define XXSetWindowBorderWidth(wm, a, b, c) \
+    __XSetWindowBorderWidth__(__FILE__, __LINE__, (wm), (a), (b), (c))
+
 static Status
-x_text_property_to_string_list(WindowManager* wm, XTextProperty* text_prop, char*** list_return, int* count_return)
+__XTextPropertyToStringList__(const char* filename, int lineno, WindowManager* wm, XTextProperty* text_prop, char*** list_return, int* count_return)
 {
-    LOG0(wm, "XTextPropertyToStringList(text_prop, list_return, count_return)");
+    LOG_X0(filename, lineno, wm, "XTextPropertyToStringList(text_prop, list_return, count_return)");
     return XTextPropertyToStringList(text_prop, list_return, count_return);
 }
 
+#define XXTextPropertyToStringList(wm, a, b, c) \
+    __XTextPropertyToStringList__(__FILE__, __LINE__, (wm), (a), (b), (c))
+
 static int
-x_unmap_window(WindowManager* wm, Display* display, Window w)
+__XUnmapWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w)
 {
-    LOG(wm, "XUnmapWindow(display, w=0x%08x)", w);
+    LOG_X(filename, lineno, wm, "XUnmapWindow(display, w=0x%08x)", w);
     return XUnmapWindow(display, w);
 }
 
+#define XXUnmapWindow(wm, a, b) \
+    __XUnmapWindow__(__FILE__, __LINE__, (wm), (a), (b))
+
 static Bool
-xft_color_alloc_name(WindowManager* wm, Display* display, Visual* visual, Colormap colormap, char* name, XftColor* result)
+__XftColorAllocName__(const char* filename, int lineno, WindowManager* wm, Display* display, Visual* visual, Colormap colormap, char* name, XftColor* result)
 {
-    LOG(wm, "XftColorAllocName(display, visual, colormap, name=\"%s\", result)", name);
+    LOG_X(filename, lineno, wm, "XftColorAllocName(display, visual, colormap, name=\"%s\", result)", name);
     return XftColorAllocName(display, visual, colormap, name, result);
 }
 
+#define XXftColorAllocName(wm, a, b, c, d, e) \
+    __XftColorAllocName__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e))
+
 static XftDraw*
-xft_draw_create(WindowManager* wm, Display* display, Drawable d, Visual* visual, Colormap colormap)
+__XftDrawCreate__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, Visual* visual, Colormap colormap)
 {
-    LOG(wm, "XftDrawCreate(display, d=0x%08x, visual, colormap)", d);
+    LOG_X(filename, lineno, wm, "XftDrawCreate(display, d=0x%08x, visual, colormap)", d);
     return XftDrawCreate(display, d, visual, colormap);
 }
 
+#define XXftDrawCreate(wm, a, b, c, d) \
+    __XftDrawCreate__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
 static void
-xft_draw_destroy(WindowManager* wm, XftDraw* draw)
+__XftDrawDestroy__(const char* filename, int lineno, WindowManager* wm, XftDraw* draw)
 {
-    LOG0(wm, "XftDrawDestroy(draw)");
+    LOG_X0(filename, lineno, wm, "XftDrawDestroy(draw)");
     return XftDrawDestroy(draw);
 }
 
+#define XXftDrawDestroy(wm, a) __XftDrawDestroy__(__FILE__, __LINE__, (wm), (a))
+
 static void
-xft_draw_string_utf8(WindowManager* wm, XftDraw* draw, XftColor* color, XftFont* pub, int x, int y, FcChar8* string, int len)
+__XftDrawStringUtf8__(const char* filename, int lineno, WindowManager* wm, XftDraw* draw, XftColor* color, XftFont* pub, int x, int y, FcChar8* string, int len)
 {
-    LOG(wm, "XftDrawStringUtf8(draw, color, pub, x=%d, y=%d, string, len=%d)", x, y, len);
+    LOG_X(filename, lineno, wm, "XftDrawStringUtf8(draw, color, pub, x=%d, y=%d, string, len=%d)", x, y, len);
     return XftDrawStringUtf8(draw, color, pub, x, y, string, len);
 }
 
+#define XXftDrawStringUtf8(wm, a, b, c, d, e, f, g) \
+    __XftDrawStringUtf8__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g))
+
 static void
-xft_text_extents_utf8(WindowManager* wm, Display* display, XftFont* font, XftChar8* string, int len, XGlyphInfo* extents)
+__XftTextExtentsUtf8__(const char* filename, int lineno, WindowManager* wm, Display* display, XftFont* font, XftChar8* string, int len, XGlyphInfo* extents)
 {
-    LOG(wm, "XftTextExtentsUtf8(display=0x%08x, font=0x%08x, string=\"%s\", len=%d, extents=%p)", display, font, string, len, extents);
+    LOG_X(filename, lineno, wm, "XftTextExtentsUtf8(display=0x%08x, font=0x%08x, string=\"%s\", len=%d, extents=%p)", display, font, string, len, extents);
     XftTextExtentsUtf8(display, font, string, len, extents);
 }
 
+#define XXftTextExtentsUtf8(wm, a, b, c, d, e) \
+    __XftTextExtentsUtf8__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e))
+
 static XftFont*
-xft_font_open_name(WindowManager* wm, Display* display, int screen, const char* name)
+__XftFontOpenName__(const char* filename, int lineno, WindowManager* wm, Display* display, int screen, const char* name)
 {
-    LOG(wm, "XftFontOpenName(display, screen, name=\"%s\")", name);
+    LOG_X(filename, lineno, wm, "XftFontOpenName(display, screen, name=\"%s\")", name);
     return XftFontOpenName(display, screen, name);
 }
+
+#define XXftFontOpenName(wm, a, b, c) \
+    __XftFontOpenName__(__FILE__, __LINE__, (wm), (a), (b), (c))
 
 static int
 compute_close_icon_x(WindowManager* wm, Window w)
 {
     XWindowAttributes wa;
-    x_get_window_attributes(wm, wm->display, w, &wa);
+    XXGetWindowAttributes(wm, wm->display, w, &wa);
     return wa.width - wm->frame_size - close_icon_width;
 }
 
@@ -486,7 +613,7 @@ draw_close_icon(WindowManager* wm, Frame* frame)
 {
     Display* display = wm->display;
     Window w = frame->window;
-    x_copy_area(
+    XXCopyArea(
         wm,
         display,
         frame->close_icon,
@@ -500,7 +627,7 @@ draw_close_icon(WindowManager* wm, Frame* frame)
 static Atom
 intern(WindowManager* wm, const char* name)
 {
-    return x_intern_atom(wm, wm->display, name, False);
+    return XXInternAtom(wm, wm->display, name, False);
 }
 
 static void
@@ -508,7 +635,7 @@ get_window_name(WindowManager* wm, char* dest, int size, Window w)
 {
     XTextProperty prop;
     dest[0] = '\0';
-    if (x_get_text_property(wm, wm->display, w, &prop, XA_WM_NAME) == 0) {
+    if (XXGetTextProperty(wm, wm->display, w, &prop, XA_WM_NAME) == 0) {
         return;
     }
     Atom encoding = prop.encoding;
@@ -520,7 +647,7 @@ get_window_name(WindowManager* wm, char* dest, int size, Window w)
 
     char** strings;
     int _;
-    if (x_text_property_to_string_list(wm, &prop, &strings, &_) == 0) {
+    if (XXTextPropertyToStringList(wm, &prop, &strings, &_) == 0) {
         return;
     }
     if (strings == NULL) {
@@ -536,7 +663,7 @@ draw_title_font_string(WindowManager* wm, XftDraw* draw, int x, int y, const cha
     XftColor* color = &wm->title_color;
     XftFont* font = wm->title_font;
     int len = strlen(text);
-    xft_draw_string_utf8(wm, draw, color, font, x, y, (XftChar8*)text, len);
+    XXftDrawStringUtf8(wm, draw, color, font, x, y, (XftChar8*)text, len);
 }
 
 static void
@@ -554,7 +681,7 @@ get_geometry(WindowManager* wm, Window w, unsigned int* width, unsigned int* hei
     Window _;
     int __;
     unsigned int ___;
-    x_get_geomerty(wm, wm->display, w, &_, &__, &__, width, height, &___, &___);
+    XXGetGeometry(wm, wm->display, w, &_, &__, &__, width, height, &___, &___);
 }
 
 static void
@@ -568,7 +695,7 @@ draw_corner(WindowManager* wm, Window w)
     int frame_size = wm->frame_size;
     int corner_size = wm->resizable_corner_size;
 #define DRAW_LINE(x1, y1, x2, y2) \
-    x_draw_line(wm, display, w, gc, (x1), (y1), (x2), (y2))
+    XXDrawLine(wm, display, w, gc, (x1), (y1), (x2), (y2))
 #define DRAW_HORIZONTAL_LINE(x1, y1, x2) DRAW_LINE((x1), (y1), (x2), (y1))
 #define DRAW_VIRTICAL_LINE(x1, y1, y2) DRAW_LINE((x1), (y1), (x1), (y2))
     DRAW_HORIZONTAL_LINE(0, corner_size, frame_size);
@@ -605,7 +732,7 @@ change_frame_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
     swa.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | LeaveWindowMask | PointerMotionMask | SubstructureNotifyMask | SubstructureRedirectMask;
-    x_change_window_attributes(wm, wm->display, w, CWEventMask, &swa);
+    XXChangeWindowAttributes(wm, wm->display, w, CWEventMask, &swa);
 }
 
 static void*
@@ -664,7 +791,7 @@ create_draw(WindowManager* wm, Window w)
     int screen = DefaultScreen(display);
     Visual* visual = DefaultVisual(display, screen);
     Colormap colormap = DefaultColormap(display, screen);
-    return xft_draw_create(wm, display, w, visual, colormap);
+    return XXftDrawCreate(wm, display, w, visual, colormap);
 }
 
 static Pixmap
@@ -672,7 +799,7 @@ create_close_icon(WindowManager* wm, Window w, int pixel)
 {
     Display* display = wm->display;
     int screen = DefaultScreen(display);
-    return x_create_pixmap_from_bitmap_data(
+    return XXCreatePixmapFromBitmapData(
         wm,
         display,
         w,
@@ -689,7 +816,7 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
     int width = child_width + compute_frame_width(wm);
     int height = child_height + compute_frame_height(wm);
     int focused_color = wm->focused_foreground_color;
-    Window w = x_create_simple_window(
+    Window w = XXCreateSimpleWindow(
         wm,
         display, DefaultRootWindow(display),
         x, y,
@@ -732,7 +859,7 @@ static void
 focus(WindowManager* wm, Frame* frame)
 {
     move_frame_to_head(wm, frame);
-    x_set_input_focus(wm, wm->display, frame->child, RevertToNone, CurrentTime);
+    XXSetInputFocus(wm, wm->display, frame->child, RevertToNone, CurrentTime);
 }
 
 static void
@@ -748,7 +875,7 @@ read_protocols(WindowManager* wm, Frame* frame)
 {
     Atom* protos;
     int n;
-    if (x_get_wm_protocols(wm, wm->display, frame->child, &protos, &n) == 0) {
+    if (XXGetWMProtocols(wm, wm->display, frame->child, &protos, &n) == 0) {
         return;
     }
     int i;
@@ -763,7 +890,7 @@ reparent_window(WindowManager* wm, Window w)
 {
     Display* display = wm->display;
     XWindowAttributes wa;
-    if (x_get_window_attributes(wm, display, w, &wa) == 0) {
+    if (XXGetWindowAttributes(wm, display, w, &wa) == 0) {
         return;
     }
     Frame* frame = create_frame(wm, wa.x, wa.y, wa.width, wa.height);
@@ -773,18 +900,18 @@ reparent_window(WindowManager* wm, Window w)
     int frame_size = wm->frame_size;
     int x = frame_size;
     int y = 2 * frame_size + wm->title_height;
-    x_set_window_border_width(wm, display, w, wm->client_border_size);
+    XXSetWindowBorderWidth(wm, display, w, wm->client_border_size);
     Window parent = frame->window;
     LOG(wm, "Reparented: frame=0x%08x, child=0x%08x", parent, w);
-    x_reparent_window(wm, display, w, parent, x, y);
+    XXReparentWindow(wm, display, w, parent, x, y);
     read_protocols(wm, frame);
 
-    x_grab_button(wm, display, Button1, AnyModifier, w, True, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+    XXGrabButton(wm, display, Button1, AnyModifier, w, True, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
 
-    x_map_window(wm, display, frame->window);
-    x_map_window(wm, display, w);
+    XXMapWindow(wm, display, frame->window);
+    XXMapWindow(wm, display, w);
     focus(wm, frame);
-    x_add_to_save_set(wm, display, w);
+    XXAddToSaveSet(wm, display, w);
 }
 
 static void
@@ -795,14 +922,14 @@ reparent_toplevels(WindowManager* wm)
     Window _;
     Window* children;
     unsigned int nchildren;
-    if (x_query_tree(wm, display, root, &_, &_, &children, &nchildren) == 0) {
+    if (XXQueryTree(wm, display, root, &_, &_, &children, &nchildren) == 0) {
         print_error("XQueryTree failed.");
         return;
     }
     int i;
     for (i = 0; i < nchildren; i++) {
         XWindowAttributes wa;
-        x_get_window_attributes(wm, display, children[i], &wa);
+        XXGetWindowAttributes(wm, display, children[i], &wa);
         if (IsUnmapped == wa.map_state) {
             continue;
         }
@@ -818,7 +945,7 @@ alloc_color(WindowManager* wm, const char* name)
     Colormap colormap = DefaultColormap(display, screen);
     XColor c;
     XColor _;
-    if (x_alloc_named_color(wm, display, colormap, name, &c, &_) == 0) {
+    if (XXAllocNamedColor(wm, display, colormap, name, &c, &_) == 0) {
         return BlackPixel(display, screen);
     }
     return c.pixel;
@@ -829,34 +956,40 @@ free_frame(WindowManager* wm, Frame* frame)
 {
     remove_frame(wm, frame);
 
-    xft_draw_destroy(wm, frame->draw);
+    XXftDrawDestroy(wm, frame->draw);
     Display* display = wm->display;
-    x_free_pixmap(wm, display, frame->inactive_close_icon);
-    x_free_pixmap(wm, display, frame->active_close_icon);
+    XXFreePixmap(wm, display, frame->inactive_close_icon);
+    XXFreePixmap(wm, display, frame->active_close_icon);
 
     memset(frame, 0xfd, sizeof(*frame));
     free(frame);
 }
 
 static int
-x_destroy_window(WindowManager* wm, Display* display, Window w)
+__XDestroyWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w)
 {
-    LOG(wm, "XDestroyWindow(display, w=0x%08x)", w);
+    LOG_X(filename, lineno, wm, "XDestroyWindow(display, w=0x%08x)", w);
     return XDestroyWindow(display, w);
 }
 
+#define XXDestroyWindow(wm, a, b) \
+    __XDestroyWindow__(__FILE__, __LINE__, (wm), (a), (b))
+
 static Bool
-x_check_window_event(WindowManager* wm, Display* display, Window w, long event_mask, XEvent* event_return)
+__XCheckWindowEvent__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, long event_mask, XEvent* event_return)
 {
-    LOG(wm, "XCheckWindowEvent(display, w=0x%08x, event_mask=0x%08x, event_return=%p)", w, event_mask, event_return);
+    LOG_X(filename, lineno, wm, "XCheckWindowEvent(display, w=0x%08x, event_mask=0x%08x, event_return=%p)", w, event_mask, event_return);
     return XCheckWindowEvent(display, w, event_mask, event_return);
 }
+
+#define XXCheckWindowEvent(wm, a, b, c, d) \
+    __XCheckWindowEvent__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
 
 static void
 discard_queued_events(WindowManager* wm, Window w)
 {
     XEvent _;
-    while (x_check_window_event(wm, wm->display, w, ~0, &_)) {
+    while (XXCheckWindowEvent(wm, wm->display, w, ~0, &_)) {
     }
 }
 
@@ -865,13 +998,14 @@ destroy_frame(WindowManager* wm, Frame* frame)
 {
     Window w = frame->window;
     free_frame(wm, frame);
-    x_destroy_window(wm, wm->display, w);
+    XXDestroyWindow(wm, wm->display, w);
     discard_queued_events(wm, w);
 }
 
 static void
 process_destroy_notify(WindowManager* wm, XDestroyWindowEvent* e)
 {
+    LOG(wm, "process_destroy_notify: event=0x%08x, window=0x%08x", e->event, e->window);
     Frame* frame = search_frame_of_child(wm, e->window);
     if (frame == NULL) {
         return;
@@ -935,8 +1069,8 @@ map_popup_menu(WindowManager* wm, int x, int y)
 {
     Display* display = wm->display;
     Window popup_menu = wm->popup_menu.window;
-    x_move_window(wm, display, popup_menu, x - 16, y + 8);
-    x_map_raised(wm, display, popup_menu);
+    XXMoveWindow(wm, display, popup_menu, x - 16, y + 8);
+    XXMapRaised(wm, display, popup_menu);
 }
 
 static GraspedPosition
@@ -1022,7 +1156,7 @@ close_frame(WindowManager* wm, Frame* frame)
     Display* display = wm->display;
     Window child = frame->child;
     if (!frame->wm_delete_window) {
-        x_kill_client(wm, display, child);
+        XXKillClient(wm, display, child);
         return;
     }
     XEvent e;
@@ -1033,12 +1167,13 @@ close_frame(WindowManager* wm, Frame* frame)
     e.xclient.format = 32;
     e.xclient.data.l[0] = wm->atoms.wm_delete_window;
     e.xclient.data.l[1] = CurrentTime;
-    x_send_event(wm, display, child, False, 0, &e);
+    XXSendEvent(wm, display, child, False, 0, &e);
 }
 
 static void
 process_button_press(WindowManager* wm, XButtonEvent* e)
 {
+    LOG(wm, "process_button_press: window=0x%08x, root=0x%08x, subwindow=0x%08x", e->window, e->root, e->subwindow);
     if (e->button != Button1) {
         return;
     }
@@ -1050,9 +1185,9 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
     }
     Frame* frame = search_frame_of_child(wm, w);
     if (frame != NULL) {
-        x_raise_window(wm, display, frame->window);
+        XXRaiseWindow(wm, display, frame->window);
         focus(wm, frame);
-        x_allow_events(wm, display, ReplayPointer, CurrentTime);
+        XXAllowEvents(wm, display, ReplayPointer, CurrentTime);
         return;
     }
     frame = search_frame(wm, w);
@@ -1063,7 +1198,7 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         close_frame(wm, frame);
         return;
     }
-    x_raise_window(wm, display, w);
+    XXRaiseWindow(wm, display, w);
     focus(wm, frame);
     grasp_frame(wm, detect_frame_position(wm, w, x, y), w, x, y);
 }
@@ -1071,7 +1206,7 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
 static void
 unmap_popup_menu(WindowManager* wm)
 {
-    x_unmap_window(wm, wm->display, wm->popup_menu.window);
+    XXUnmapWindow(wm, wm->display, wm->popup_menu.window);
 }
 
 static void
@@ -1079,7 +1214,7 @@ resize_child(WindowManager* wm, Window w, int frame_width, int frame_height)
 {
     int width = frame_width - compute_frame_width(wm);
     int height = frame_height - compute_frame_height(wm);
-    x_resize_window(wm, wm->display, w, width, height);
+    XXResizeWindow(wm, wm->display, w, width, height);
 }
 
 static int
@@ -1092,7 +1227,7 @@ static int
 detect_selected_popup_item(WindowManager* wm, int x, int y)
 {
     XWindowAttributes wa;
-    x_get_window_attributes(wm, wm->display, wm->popup_menu.window, &wa);
+    XXGetWindowAttributes(wm, wm->display, wm->popup_menu.window, &wa);
     if (!is_region_inside(wa.x, wa.y, wa.width, wa.height, x, y)) {
         return -1;
     }
@@ -1116,7 +1251,7 @@ draw_popup_menu(WindowManager* wm)
         Display* display = wm->display;
         GC gc = wm->popup_menu.selected_gc;
         int y = item_height * selected_item;
-        x_fill_rectagle(wm, display, w, gc, 0, y, window_width, item_height);
+        XXFillRectangle(wm, display, w, gc, 0, y, window_width, item_height);
     }
 
     XftDraw* draw = wm->popup_menu.draw;
@@ -1130,16 +1265,19 @@ draw_popup_menu(WindowManager* wm)
 }
 
 static int
-x_clear_area(WindowManager* wm, Display* display, Window w, int x, int y, unsigned width, unsigned height, Bool exposures)
+__XClearArea__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, int x, int y, unsigned width, unsigned height, Bool exposures)
 {
-    LOG(wm, "XClearArea(display, w=0x%08x, x=%d, y=%d, width=%u, height=%u, exposures)", w, x, y, width, height);
+    LOG_X(filename, lineno, wm, "XClearArea(display, w=0x%08x, x=%d, y=%d, width=%u, height=%u, exposures)", w, x, y, width, height);
     return XClearArea(display, w, x, y, width, height, exposures);
 }
+
+#define XXClearArea(wm, a, b, c, d, e, f, g) \
+    __XClearArea__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g))
 
 static void
 expose(WindowManager* wm, Window w)
 {
-    x_clear_area(wm, wm->display, w, 0, 0, 0, 0, True);
+    XXClearArea(wm, wm->display, w, 0, 0, 0, 0, True);
 }
 
 static void
@@ -1212,12 +1350,13 @@ change_cursor(WindowManager* wm, Window w, int x, int y)
         assert(False);
         return; /* A statement to surpress GCC warning. */
     }
-    x_define_cursor(wm, wm->display, w, cursor);
+    XXDefineCursor(wm, wm->display, w, cursor);
 }
 
 static void
 process_motion_notify(WindowManager* wm, XMotionEvent* e)
 {
+    LOG(wm, "process_motion_notify: window=0x%08x, root=0x%08x, subwindow=0x%08x", e->window, e->root, e->subwindow);
     Display* display = wm->display;
     Window w = e->window;
     int x = e->x;
@@ -1240,23 +1379,23 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     int new_x = e->x_root - wm->grasped_x - border_size;
     int new_y = e->y_root - wm->grasped_y - border_size;
     if (pos == GP_TITLE_BAR) {
-        x_move_window(wm, display, w, new_x, new_y);
+        XXMoveWindow(wm, display, w, new_x, new_y);
         return;
     }
     XWindowAttributes frame_attrs;
-    x_get_window_attributes(wm, display, w, &frame_attrs);
+    XXGetWindowAttributes(wm, display, w, &frame_attrs);
     Frame* frame = search_frame(wm, w);
     assert(frame != NULL);
     Window child = frame->child;
     XWindowAttributes child_attrs;
-    x_get_window_attributes(wm, display, child, &child_attrs);
+    XXGetWindowAttributes(wm, display, child, &child_attrs);
     int new_width;
     int new_height;
     switch (wm->grasped_position) {
     case GP_NORTH:
         new_width = frame_attrs.width;
         new_height = frame_attrs.y + frame_attrs.height - new_y;
-        x_move_resize_window(
+        XXMoveResizeWindow(
             wm,
             display, w,
             frame_attrs.x, new_y,
@@ -1266,7 +1405,7 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     case GP_NORTH_EAST:
         new_width = x + (frame_attrs.width - wm->grasped_x);
         new_height = frame_attrs.y + frame_attrs.height - new_y;
-        x_move_resize_window(
+        XXMoveResizeWindow(
             wm,
             display, w,
             frame_attrs.x, new_y,
@@ -1277,14 +1416,14 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     case GP_EAST:
         new_width = x + (frame_attrs.width - wm->grasped_x);
         new_height = frame_attrs.height;
-        x_resize_window(wm, display, w, new_width, new_height);
+        XXResizeWindow(wm, display, w, new_width, new_height);
         resize_child(wm, child, new_width, new_height);
         wm->grasped_x = x;
         return;
     case GP_SOUTH_EAST:
         new_width = x + (frame_attrs.width - wm->grasped_x);
         new_height = y + (frame_attrs.height - wm->grasped_y);
-        x_resize_window(wm, display, w, new_width, new_height);
+        XXResizeWindow(wm, display, w, new_width, new_height);
         resize_child(wm, child, new_width, new_height);
         wm->grasped_x = x;
         wm->grasped_y = y;
@@ -1292,14 +1431,14 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     case GP_SOUTH:
         new_width = frame_attrs.width;
         new_height = y + (frame_attrs.height - wm->grasped_y);
-        x_resize_window(wm, display, w, new_width, new_height);
+        XXResizeWindow(wm, display, w, new_width, new_height);
         resize_child(wm, child, new_width, new_height);
         wm->grasped_y = y;
         return;
     case GP_SOUTH_WEST:
         new_width = frame_attrs.x + frame_attrs.width - new_x;
         new_height = y + (frame_attrs.height - wm->grasped_y);
-        x_move_resize_window(
+        XXMoveResizeWindow(
             wm,
             display, w,
             new_x, frame_attrs.y,
@@ -1310,7 +1449,7 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     case GP_WEST:
         new_width = frame_attrs.x + frame_attrs.width - new_x;
         new_height = frame_attrs.height;
-        x_move_resize_window(
+        XXMoveResizeWindow(
             wm,
             display, w,
             new_x, frame_attrs.y,
@@ -1320,7 +1459,7 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     case GP_NORTH_WEST:
         new_width = frame_attrs.x + frame_attrs.width - new_x;
         new_height = frame_attrs.y + frame_attrs.height - new_y;
-        x_move_resize_window(
+        XXMoveResizeWindow(
             wm,
             display, w,
             new_x, new_y,
@@ -1338,14 +1477,14 @@ static void
 get_last_event(WindowManager* wm, Window w, int event_type, XEvent* e)
 {
     Display* display = wm->display;
-    while (x_check_typed_window_event(wm, display, w, event_type, e));
+    while (XXCheckTypedWindowEvent(wm, display, w, event_type, e));
 }
 
 static int
 compute_text_width(WindowManager* wm, XftFont* font, const char* text, int len)
 {
     XGlyphInfo glyph;
-    xft_text_extents_utf8(wm, wm->display, font, (XftChar8*)text, len, &glyph);
+    XXftTextExtentsUtf8(wm, wm->display, font, (XftChar8*)text, len, &glyph);
     return glyph.width;
 }
 
@@ -1372,12 +1511,13 @@ draw_taskbar(WindowManager* wm)
     XftDraw* draw = wm->taskbar.draw;
     XftColor* color = &wm->title_color;
     int y = font->ascent;
-    xft_draw_string_utf8(wm, draw, color, font, x, y, (XftChar8*)text, len);
+    XXftDrawStringUtf8(wm, draw, color, font, x, y, (XftChar8*)text, len);
 }
 
 static void
 process_expose(WindowManager* wm, XExposeEvent* e)
 {
+    LOG(wm, "process_expose: window=0x%08x", e->window);
     Window w = e->window;
     if (w == wm->popup_menu.window) {
         draw_popup_menu(wm);
@@ -1441,6 +1581,7 @@ execute(WindowManager* wm, char* cmd)
 static void
 process_button_release(WindowManager* wm, XButtonEvent* e)
 {
+    LOG(wm, "process_button_release: window=0x%08x, root=0x%08x, subwindow=0x%08x", e->window, e->root, e->subwindow);
     if (e->window != DefaultRootWindow(wm->display)) {
         release_frame(wm);
         return;
@@ -1456,7 +1597,7 @@ process_button_release(WindowManager* wm, XButtonEvent* e)
 static void
 change_frame_background(WindowManager* wm, Window w, int pixel)
 {
-    x_set_window_background(wm, wm->display, w, pixel);
+    XXSetWindowBackground(wm, wm->display, w, pixel);
     expose(wm, w);
 }
 
@@ -1469,6 +1610,7 @@ is_alive_frame(WindowManager* wm, Window w)
 static void
 process_focus_out(WindowManager* wm, XFocusChangeEvent* e)
 {
+    LOG(wm, "process_focus_out: window=0x%08x", e->window);
     if (e->mode != NotifyNormal) {
         return;
     }
@@ -1487,6 +1629,7 @@ process_focus_out(WindowManager* wm, XFocusChangeEvent* e)
 static void
 process_focus_in(WindowManager* wm, XFocusChangeEvent* e)
 {
+    LOG(wm, "process_focus_in: window=0x%08x", e->window);
     if (e->mode != NotifyNormal) {
         return;
     }
@@ -1498,13 +1641,14 @@ process_focus_in(WindowManager* wm, XFocusChangeEvent* e)
     if (!is_alive_frame(wm, w)) {
         return;
     }
-    x_raise_window(wm, wm->display, w);
+    XXRaiseWindow(wm, wm->display, w);
     change_frame_background(wm, w, wm->focused_foreground_color);
 }
 
 static void
 process_map_request(WindowManager* wm, XMapRequestEvent* e)
 {
+    LOG(wm, "process_map_request: parent=0x%08x, window=0x%08x", e->parent, e->window);
     Window w = e->window;
     Frame* frame = search_frame_of_child(wm, w);
     if (frame != NULL) {
@@ -1516,12 +1660,13 @@ process_map_request(WindowManager* wm, XMapRequestEvent* e)
 static void
 process_unmap_notify(WindowManager* wm, XUnmapEvent* e)
 {
+    LOG(wm, "process_unmap_notify: event=0x%08x, window=0x%08x", e->event, e->window);
     Frame* frame = search_frame_of_child(wm, e->window);
     if (frame == NULL) {
         /* XXX: Who sends UnmapNotify without a frame? */
         return;
     }
-    x_unmap_window(wm, wm->display, frame->window);
+    XXUnmapWindow(wm, wm->display, frame->window);
 }
 
 static const char*
@@ -1574,30 +1719,30 @@ configure_frame(WindowManager* wm, Window parent, Window w, XConfigureRequestEve
     if (value_mask & CWX) {
         XWindowChanges changes;
         changes.x = e->x - frame_size;
-        x_configure_window(wm, display, parent, CWX, &changes);
+        XXConfigureWindow(wm, display, parent, CWX, &changes);
     }
     if (value_mask & CWY) {
         XWindowChanges changes;
         changes.y = e->y - (frame_size + wm->title_height);
-        x_configure_window(wm, display, parent, CWY, &changes);
+        XXConfigureWindow(wm, display, parent, CWY, &changes);
     }
     if (value_mask & CWWidth) {
         XWindowChanges changes;
         int width = e->width;
         changes.width = width + compute_frame_width(wm);
         unsigned int value_mask = CWWidth;
-        x_configure_window(wm, display, parent, value_mask, &changes);
+        XXConfigureWindow(wm, display, parent, value_mask, &changes);
         changes.width = width;
-        x_configure_window(wm, display, w, value_mask, &changes);
+        XXConfigureWindow(wm, display, w, value_mask, &changes);
     }
     if (value_mask & CWHeight) {
         XWindowChanges changes;
         int height = e->height;
         changes.height = height + compute_frame_height(wm);
         unsigned int value_mask = CWHeight;
-        x_configure_window(wm, display, parent, value_mask, &changes);
+        XXConfigureWindow(wm, display, parent, value_mask, &changes);
         changes.height = height;
-        x_configure_window(wm, display, w, value_mask, &changes);
+        XXConfigureWindow(wm, display, w, value_mask, &changes);
     }
     /* Ignore CWBorderWidth, CWSibling and CWStackMode */
 }
@@ -1605,6 +1750,7 @@ configure_frame(WindowManager* wm, Window parent, Window w, XConfigureRequestEve
 static void
 process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
 {
+    LOG(wm, "process_configure_request: parent=0x%08x, window=0x%08x, above=0x%08x", e->parent, e->window, e->above);
     Window parent = e->parent;
     Frame* frame = search_frame(wm, parent);
     Window w = e->window;
@@ -1618,27 +1764,27 @@ process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
     if (value_mask & CWX) {
         XWindowChanges changes;
         changes.x = e->x;
-        x_configure_window(wm, display, w, CWX, &changes);
+        XXConfigureWindow(wm, display, w, CWX, &changes);
     }
     if (value_mask & CWY) {
         XWindowChanges changes;
         changes.y = e->y;
-        x_configure_window(wm, display, w, CWY, &changes);
+        XXConfigureWindow(wm, display, w, CWY, &changes);
     }
     if (value_mask & CWWidth) {
         XWindowChanges changes;
         changes.width = e->width;
-        x_configure_window(wm, display, w, CWWidth, &changes);
+        XXConfigureWindow(wm, display, w, CWWidth, &changes);
     }
     if (value_mask & CWHeight) {
         XWindowChanges changes;
         changes.height = e->height;
-        x_configure_window(wm, display, w, CWHeight, &changes);
+        XXConfigureWindow(wm, display, w, CWHeight, &changes);
     }
     if (value_mask & CWBorderWidth) {
         XWindowChanges changes;
         changes.border_width = e->border_width;
-        x_configure_window(wm, display, w, CWBorderWidth, &changes);
+        XXConfigureWindow(wm, display, w, CWBorderWidth, &changes);
     }
     if (value_mask & CWSibling) {
         LOG0(wm, "CWSibling");
@@ -1646,34 +1792,36 @@ process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
     if (value_mask & CWStackMode) {
         XWindowChanges changes;
         changes.stack_mode = e->detail;
-        x_configure_window(wm, display, w, CWStackMode, &changes);
+        XXConfigureWindow(wm, display, w, CWStackMode, &changes);
     }
 }
 
 static int
-x_undefine_cursor(WindowManager* wm, Display* display, Window w)
+__XUndefineCursor__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w)
 {
-    LOG(wm, "XUndefineCursor(display, w=0x%08x)", w);
+    LOG_X(filename, lineno, wm, "XUndefineCursor(display, w=0x%08x)", w);
     return XUndefineCursor(display, w);
 }
+
+#define XXUndefineCursor(wm, a, b) \
+    __XUndefineCursor__(__FILE__, __LINE__, (wm), (a), (b))
 
 static void
 process_leave_notify(WindowManager* wm, XCrossingEvent* e)
 {
+    LOG(wm, "process_leave_notify: window=0x%08x, root=0x%08x, subwindow=0x%08x", e->window, e->root, e->subwindow);
     Window w = e->window;
     if (search_frame(wm, w) == NULL) {
         return;
     }
-    x_undefine_cursor(wm, wm->display, w);
+    XXUndefineCursor(wm, wm->display, w);
 }
 
 static void
 process_event(WindowManager* wm, XEvent* e)
 {
     int type = e->type;
-    if (type != MotionNotify) {
-        LOG(wm, "%s: window=0x%08x", dmxEventName(type), e->xany.window);
-    }
+    LOG(wm, "%s: window=0x%08x", dmxEventName(type), e->xany.window);
     if (type == ButtonPress) {
         XButtonEvent* ev = &e->xbutton;
         process_button_press(wm, ev);
@@ -1726,7 +1874,7 @@ change_event_mask_exposure(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
     swa.event_mask = ExposureMask;
-    x_change_window_attributes(wm, wm->display, w, CWEventMask, &swa);
+    XXChangeWindowAttributes(wm, wm->display, w, CWEventMask, &swa);
 }
 
 static void
@@ -1760,7 +1908,7 @@ setup_popup_menu(WindowManager* wm)
 {
     Display* display = wm->display;
     int screen = DefaultScreen(display);
-    Window w = x_create_simple_window(
+    Window w = XXCreateSimpleWindow(
         wm,
         display, DefaultRootWindow(display),
         0, 0,
@@ -1774,11 +1922,11 @@ setup_popup_menu(WindowManager* wm)
     XGCValues title_gc;
     title_gc.foreground = wm->focused_foreground_color;
     int mask = GCForeground;
-    wm->popup_menu.title_gc = x_create_gc(wm, display, w, mask, &title_gc);
+    wm->popup_menu.title_gc = XXCreateGC(wm, display, w, mask, &title_gc);
 
     XGCValues selected_gc;
     selected_gc.foreground = alloc_color(wm, "yellow");
-    wm->popup_menu.selected_gc = x_create_gc(wm, display, w, mask, &selected_gc);
+    wm->popup_menu.selected_gc = XXCreateGC(wm, display, w, mask, &selected_gc);
 
     wm->popup_menu.draw = create_draw(wm, w);
     assert(wm->popup_menu.draw != NULL);
@@ -1794,7 +1942,7 @@ setup_popup_menu(WindowManager* wm)
 
     int width = 2 * wm->popup_menu.margin + compute_popup_menu_width(wm);
     int height = compute_font_height(wm->title_font) * wm->popup_menu.items_num;
-    x_resize_window(wm, display, w, width, height);
+    XXResizeWindow(wm, display, w, width, height);
 }
 
 static void
@@ -1806,7 +1954,7 @@ setup_title_font(WindowManager* wm)
 #define OPEN_FONT(var, name) \
 XftFont* var; \
 do { \
-        var = xft_font_open_name(wm, display, screen, (name)); \
+        var = XXftFontOpenName(wm, display, screen, (name)); \
         if (var == NULL) { \
             const char* fmt = "Cannot find font (XftFontOpenName failed): %s"; \
             print_error(fmt, (name)); \
@@ -1827,7 +1975,7 @@ do { \
      * XXX: I could not find a description about a mean of XftColorAllocName's
      * return value.
      */
-    xft_color_alloc_name(wm, display, visual, colormap, "black", result);
+    XXftColorAllocName(wm, display, visual, colormap, "black", result);
 }
 
 static void
@@ -1835,7 +1983,7 @@ setup_cursors(WindowManager* wm)
 {
     Display* display = wm->display;
 #define CREATE_CURSOR(member, cursor) \
-    wm->member = x_create_font_cursor(wm, display, cursor)
+    wm->member = XXCreateFontCursor(wm, display, cursor)
     CREATE_CURSOR(normal_cursor, XC_top_left_arrow);
     CREATE_CURSOR(bottom_left_cursor, XC_bottom_left_corner);
     CREATE_CURSOR(bottom_right_cursor, XC_bottom_right_corner);
@@ -1860,7 +2008,7 @@ setup_taskbar(WindowManager* wm)
     int font_height = compute_font_height(wm->title_font);
     int border_size = wm->border_size;
     int screen = DefaultScreen(display);
-    Window w = x_create_simple_window(
+    Window w = XXCreateSimpleWindow(
         wm,
         display, root,
         - border_size, root_height - font_height,
@@ -1982,11 +2130,14 @@ error_handler(Display* display, XErrorEvent* e)
 }
 
 static int
-x_select_input(WindowManager* wm, Display* display, Window w, int event_mask)
+__XSelectInput__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, int event_mask)
 {
-    LOG(wm, "XSelectInput(display, w=0x%08x, event_mask)", w);
+    LOG_X(filename, lineno, wm, "XSelectInput(display, w=0x%08x, event_mask)", w);
     return XSelectInput(display, w, event_mask);
 }
+
+#define XXSelectInput(wm, a, b, c) \
+    __XSelectInput__(__FILE__, __LINE__, (wm), (a), (b), (c))
 
 static void
 execute_startup(WindowManager* wm, int argc, char* argv[])
@@ -2004,11 +2155,11 @@ wm_main(WindowManager* wm, Display* display, const char* log_file, int argc, cha
 
     setup_window_manager(wm, display, log_file);
     Window root = DefaultRootWindow(display);
-    x_define_cursor(wm, display, root, wm->normal_cursor);
+    XXDefineCursor(wm, display, root, wm->normal_cursor);
     reparent_toplevels(wm);
-    x_map_window(wm, display, wm->taskbar.window);
+    XXMapWindow(wm, display, wm->taskbar.window);
     long mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | SubstructureRedirectMask;
-    x_select_input(wm, display, root, mask);
+    XXSelectInput(wm, display, root, mask);
     LOG(wm, "root window=0x%08x", root);
 
     execute_startup(wm, argc, argv);
