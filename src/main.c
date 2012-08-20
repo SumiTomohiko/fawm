@@ -975,31 +975,12 @@ __XDestroyWindow__(const char* filename, int lineno, WindowManager* wm, Display*
 #define XXDestroyWindow(wm, a, b) \
     __XDestroyWindow__(__FILE__, __LINE__, (wm), (a), (b))
 
-static Bool
-__XCheckWindowEvent__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, long event_mask, XEvent* event_return)
-{
-    LOG_X(filename, lineno, wm, "XCheckWindowEvent(display, w=0x%08x, event_mask=0x%08x, event_return=%p)", w, event_mask, event_return);
-    return XCheckWindowEvent(display, w, event_mask, event_return);
-}
-
-#define XXCheckWindowEvent(wm, a, b, c, d) \
-    __XCheckWindowEvent__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
-
-static void
-discard_queued_events(WindowManager* wm, Window w)
-{
-    XEvent _;
-    while (XXCheckWindowEvent(wm, wm->display, w, ~0, &_)) {
-    }
-}
-
 static void
 destroy_frame(WindowManager* wm, Frame* frame)
 {
     Window w = frame->window;
     free_frame(wm, frame);
     XXDestroyWindow(wm, wm->display, w);
-    discard_queued_events(wm, w);
 }
 
 static void
@@ -1191,7 +1172,9 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         return;
     }
     frame = search_frame(wm, w);
-    assert(frame != NULL);
+    if (frame == NULL) {
+        return;
+    }
     int x = e->x;
     int y = e->y;
     if (is_on_close_icon(wm, w, x, y)) {
@@ -1365,6 +1348,10 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
         highlight_selected_popup_item(wm, x, y);
         return;
     }
+    Frame* frame = search_frame(wm, w);
+    if (frame == NULL) {
+        return;
+    }
     if ((e->state & Button1Mask) == 0) {
         change_cursor(wm, w, x, y);
         change_close_icon(wm, w, x, y);
@@ -1384,8 +1371,6 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     }
     XWindowAttributes frame_attrs;
     XXGetWindowAttributes(wm, display, w, &frame_attrs);
-    Frame* frame = search_frame(wm, w);
-    assert(frame != NULL);
     Window child = frame->child;
     XWindowAttributes child_attrs;
     XXGetWindowAttributes(wm, display, child, &child_attrs);
@@ -1663,7 +1648,6 @@ process_unmap_notify(WindowManager* wm, XUnmapEvent* e)
     LOG(wm, "process_unmap_notify: event=0x%08x, window=0x%08x", e->event, e->window);
     Frame* frame = search_frame_of_child(wm, e->window);
     if (frame == NULL) {
-        /* XXX: Who sends UnmapNotify without a frame? */
         return;
     }
     XXUnmapWindow(wm, wm->display, frame->window);
