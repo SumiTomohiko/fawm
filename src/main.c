@@ -32,8 +32,6 @@ struct Icon {
 typedef struct Icon Icon;
 
 struct Frame {
-    struct Frame* prev;
-    struct Frame* next;
     Window window;
     Window child;
     struct Icon close_icon;
@@ -45,6 +43,14 @@ struct Frame {
 };
 
 typedef struct Frame Frame;
+
+struct Array {
+    int size;
+    int capacity;
+    struct Frame** items;
+};
+
+typedef struct Array Array;
 
 enum GraspedPosition {
     GP_NONE,
@@ -73,7 +79,9 @@ struct WindowManager {
     int title_height;
     int resizable_corner_size;
 
-    Frame* frames;
+    /* FIXME: size/capacity of frames and frames_z_order are same. Share it. */
+    Array frames;
+    Array frames_z_order;
 
     GraspedPosition grasped_position;
     Window grasped_frame;
@@ -167,30 +175,90 @@ print_error(const char* fmt, ...)
     va_end(ap);
 }
 
-static Bool
-is_sentinel_frame(Frame* frame)
+static void
+initialize_array(Array* a)
 {
-    return frame->next == NULL ? True : False;
+    a->size = a->capacity = 0;
+    a->items = NULL;
+}
+
+static void
+ensure_array_size(Array* a, int size)
+{
+    if (size <= a->capacity) {
+        return;
+    }
+    int capacity = 8 + a->capacity;
+    Frame** p = (Frame**)realloc(a->items, sizeof(a->items[0]) * capacity);
+    assert(p != NULL);
+    a->capacity = capacity;
+    a->items = p;
+}
+
+static void
+remove_from_array(Array* a, Frame* f)
+{
+    int size = a->size;
+    int i;
+    for (i = 0; (i < size) && (a->items[i] != f); i++) {
+    }
+    assert(i < size);
+    int rest = size - i - 1;
+    memcpy(&a->items[i], &a->items[i + 1], sizeof(a->items[0]) * rest);
+    a->size--;
+}
+
+static void
+prepend_to_array(Array* a, Frame* f)
+{
+    ensure_array_size(a, a->size + 1);
+    memmove(&a->items[1], &a->items[0], sizeof(a->items[0]) * a->size);
+    a->items[0] = f;
+    a->size++;
+}
+
+static void
+append_to_array(Array* a, Frame* f)
+{
+    int size = a->size;
+    ensure_array_size(a, size + 1);
+    a->items[size] = f;
+    a->size++;
+}
+
+static Frame*
+search_in_array(Array* a, Bool (*pred)(Frame*, Window), Window w)
+{
+    Frame** items = a->items;
+    int size = a->size;
+    int i;
+    for (i = 0; (i < size) && !pred(items[i], w); i++) {
+    }
+    return i == size ? NULL : items[i];
+}
+
+static Bool
+is_child(Frame* f, Window w)
+{
+    return f->child == w;
 }
 
 static Frame*
 search_frame_of_child(WindowManager* wm, Window w)
 {
-    Frame* frame = wm->frames->next;
-    while (!is_sentinel_frame(frame) && (frame->child != w)) {
-        frame = frame->next;
-    }
-    return !is_sentinel_frame(frame) ? frame : NULL;
+    return search_in_array(&wm->frames, is_child, w);
+}
+
+static Bool
+is_frame(Frame* f, Window w)
+{
+    return f->window == w;
 }
 
 static Frame*
 search_frame(WindowManager* wm, Window w)
 {
-    Frame* frame = wm->frames->next;
-    while (!is_sentinel_frame(frame) && (frame->window != w)) {
-        frame = frame->next;
-    }
-    return !is_sentinel_frame(frame) ? frame : NULL;
+    return search_in_array(&wm->frames, is_frame, w);
 }
 
 static int
@@ -795,12 +863,8 @@ alloc_frame()
 static void
 insert_frame(WindowManager* wm, Frame* frame)
 {
-    Frame* anchor = wm->frames;
-    Frame* next = anchor->next;
-    next->prev = frame;
-    frame->prev = anchor;
-    frame->next = next;
-    anchor->next = frame;
+    append_to_array(&wm->frames, frame);
+    prepend_to_array(&wm->frames_z_order, frame);
 }
 
 static int
@@ -887,23 +951,18 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
 }
 
 static void
-remove_frame(WindowManager* wm, Frame* frame)
+move_frame_to_z_order_head(WindowManager* wm, Frame* frame)
 {
-    frame->prev->next = frame->next;
-    frame->next->prev = frame->prev;
-}
-
-static void
-move_frame_to_head(WindowManager* wm, Frame* frame)
-{
-    remove_frame(wm, frame);
-    insert_frame(wm, frame);
+    Array* a = &wm->frames_z_order;
+    /* FIXME: Do it in one function. */
+    remove_from_array(a, frame);
+    prepend_to_array(a, frame);
 }
 
 static void
 focus(WindowManager* wm, Frame* frame)
 {
-    move_frame_to_head(wm, frame);
+    move_frame_to_z_order_head(wm, frame);
     XXSetInputFocus(wm, wm->display, frame->child, RevertToNone, CurrentTime);
 }
 
@@ -1015,7 +1074,8 @@ free_icon(WindowManager* wm, Icon* icon)
 static void
 free_frame(WindowManager* wm, Frame* frame)
 {
-    remove_frame(wm, frame);
+    remove_from_array(&wm->frames, frame);
+    remove_from_array(&wm->frames_z_order, frame);
 
     XXftDrawDestroy(wm, frame->draw);
     free_icon(wm, &frame->close_icon);
@@ -1054,23 +1114,10 @@ process_destroy_notify(WindowManager* wm, XDestroyWindowEvent* e)
     }
     destroy_frame(wm, frame);
 
-    Frame* top = wm->frames->next;
-    if (is_sentinel_frame(top)) {
+    if (wm->frames_z_order.size == 0) {
         return;
     }
-    focus(wm, top);
-}
-
-static void
-setup_frame_list(WindowManager* wm)
-{
-    Frame* anchor = alloc_frame();
-    anchor->prev = NULL;
-    Frame* sentinel = alloc_frame();
-    sentinel->next = NULL;
-    anchor->next = sentinel;
-    sentinel->prev = anchor;
-    wm->frames = anchor;
+    focus(wm, wm->frames_z_order.items[0]);
 }
 
 static Bool
@@ -2174,7 +2221,8 @@ setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
     wm->frame_size = 4;
     wm->title_height = 16;
     wm->resizable_corner_size = 32;
-    setup_frame_list(wm);
+    initialize_array(&wm->frames);
+    initialize_array(&wm->frames_z_order);
     release_frame(wm);
     setup_title_font(wm);
     setup_cursors(wm);
