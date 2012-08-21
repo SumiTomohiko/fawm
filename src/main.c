@@ -1019,12 +1019,18 @@ reparent_window(WindowManager* wm, Window w)
     XXAddToSaveSet(wm, display, w);
 }
 
-static void
-reparent_mapped_child(WindowManager* wm, Window w)
+static Bool
+is_mapped(WindowManager* wm, Window w)
 {
     XWindowAttributes wa;
     XXGetWindowAttributes(wm, wm->display, w, &wa);
-    if (wa.map_state == IsUnmapped) {
+    return wa.map_state != IsUnmapped;
+}
+
+static void
+reparent_mapped_child(WindowManager* wm, Window w)
+{
+    if (!is_mapped(wm, w)) {
         return;
     }
     reparent_window(wm, w);
@@ -1105,6 +1111,20 @@ destroy_frame(WindowManager* wm, Frame* frame)
 }
 
 static void
+focus_top_frame(WindowManager* wm)
+{
+    Frame** items = wm->frames_z_order.items;
+    int size = wm->frames_z_order.size;
+    int i;
+    for (i = 0; (i < size) && !is_mapped(wm, items[i]->window); i++) {
+    }
+    if (i == size) {
+        return;
+    }
+    focus(wm, items[i]);
+}
+
+static void
 process_destroy_notify(WindowManager* wm, XDestroyWindowEvent* e)
 {
     LOG(wm, "process_destroy_notify: event=0x%08x, window=0x%08x", e->event, e->window);
@@ -1113,11 +1133,7 @@ process_destroy_notify(WindowManager* wm, XDestroyWindowEvent* e)
         return;
     }
     destroy_frame(wm, frame);
-
-    if (wm->frames_z_order.size == 0) {
-        return;
-    }
-    focus(wm, wm->frames_z_order.items[0]);
+    focus_top_frame(wm);
 }
 
 static Bool
@@ -1840,6 +1856,7 @@ process_unmap_notify(WindowManager* wm, XUnmapEvent* e)
         return;
     }
     XXUnmapWindow(wm, wm->display, frame->window);
+    focus_top_frame(wm);
 }
 
 static const char*
