@@ -1182,14 +1182,36 @@ detect_frame_position(WindowManager* wm, Window w, int x, int y)
 }
 
 static Bool
+is_on_minimize_icon(WindowManager* wm, Window w, int x, int y)
+{
+    int frame_size = wm->frame_size;
+    int icon_x = compute_minimize_icon_x(wm, w);
+    int icon_y = wm->border_size + frame_size;
+    int width = close_icon_width;
+    int height = close_icon_height;
+    return is_region_inside(icon_x, icon_y, width, height, x, y);
+}
+
+static Bool
+is_on_maximize_icon(WindowManager* wm, Window w, int x, int y)
+{
+    int frame_size = wm->frame_size;
+    int icon_x = compute_maximize_icon_x(wm, w);
+    int icon_y = wm->border_size + frame_size;
+    int width = close_icon_width;
+    int height = close_icon_height;
+    return is_region_inside(icon_x, icon_y, width, height, x, y);
+}
+
+static Bool
 is_on_close_icon(WindowManager* wm, Window w, int x, int y)
 {
     int frame_size = wm->frame_size;
-    int close_x = compute_close_icon_x(wm, w);
-    int close_y = wm->border_size + frame_size;
+    int icon_x = compute_close_icon_x(wm, w);
+    int icon_y = wm->border_size + frame_size;
     int width = close_icon_width;
     int height = close_icon_height;
-    return is_region_inside(close_x, close_y, width, height, x, y);
+    return is_region_inside(icon_x, icon_y, width, height, x, y);
 }
 
 static void
@@ -1336,12 +1358,56 @@ highlight_selected_popup_item(WindowManager* wm, int x, int y)
 }
 
 static Pixmap
+select_minimize_icon(WindowManager* wm, Frame* frame, int x, int y)
+{
+    if (is_on_minimize_icon(wm, frame->window, x, y)) {
+        return frame->minimize_icon.active;
+    }
+    return frame->minimize_icon.inactive;
+}
+
+static Pixmap
+select_maximize_icon(WindowManager* wm, Frame* frame, int x, int y)
+{
+    if (is_on_maximize_icon(wm, frame->window, x, y)) {
+        return frame->maximize_icon.active;
+    }
+    return frame->maximize_icon.inactive;
+}
+
+static Pixmap
 select_close_icon(WindowManager* wm, Frame* frame, int x, int y)
 {
     if (is_on_close_icon(wm, frame->window, x, y)) {
         return frame->close_icon.active;
     }
     return frame->close_icon.inactive;
+}
+
+static void
+change_minimize_icon(WindowManager* wm, Window w, int x, int y)
+{
+    Frame* frame = search_frame(wm, w);
+    assert(frame != NULL);
+    Pixmap icon = select_minimize_icon(wm, frame, x, y);
+    if (icon == frame->minimize_icon.current) {
+        return;
+    }
+    frame->minimize_icon.current = icon;
+    expose(wm, w);
+}
+
+static void
+change_maximize_icon(WindowManager* wm, Window w, int x, int y)
+{
+    Frame* frame = search_frame(wm, w);
+    assert(frame != NULL);
+    Pixmap icon = select_maximize_icon(wm, frame, x, y);
+    if (icon == frame->maximize_icon.current) {
+        return;
+    }
+    frame->maximize_icon.current = icon;
+    expose(wm, w);
 }
 
 static void
@@ -1416,6 +1482,8 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     if ((e->state & Button1Mask) == 0) {
         change_cursor(wm, w, x, y);
         change_close_icon(wm, w, x, y);
+        change_maximize_icon(wm, w, x, y);
+        change_minimize_icon(wm, w, x, y);
         return;
     }
 
