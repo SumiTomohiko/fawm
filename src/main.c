@@ -333,6 +333,15 @@ __XFreePixmap__(const char* filename, int lineno, WindowManager* wm, Display* di
 #define XXFreePixmap(wm, a, b) \
     __XFreePixmap__(__FILE__, __LINE__, (wm), (a), (b))
 
+static int
+__XFree__(const char* filename, int lineno, WindowManager* wm, void* data)
+{
+    LOG_X(filename, lineno, wm, "XFree(data=%p)", data);
+    return XFree(data);
+}
+
+#define XXFree(wm, data) __XFree__(__FILE__, __LINE__, (wm), (data))
+
 static Status
 __XGetGeometry__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, Window* root_return, int* x_return, int* y_return, unsigned int* width_return, unsigned int* height_return, unsigned int* border_width_return, unsigned int* depth_return)
 {
@@ -888,6 +897,7 @@ read_protocols(WindowManager* wm, Frame* frame)
 static void
 reparent_window(WindowManager* wm, Window w)
 {
+    LOG(wm, "reparent_window: w=0x%08x", w);
     Display* display = wm->display;
     XWindowAttributes wa;
     if (XXGetWindowAttributes(wm, display, w, &wa) == 0) {
@@ -915,6 +925,17 @@ reparent_window(WindowManager* wm, Window w)
 }
 
 static void
+reparent_mapped_child(WindowManager* wm, Window w)
+{
+    XWindowAttributes wa;
+    XXGetWindowAttributes(wm, wm->display, w, &wa);
+    if (wa.map_state == IsUnmapped) {
+        return;
+    }
+    reparent_window(wm, w);
+}
+
+static void
 reparent_toplevels(WindowManager* wm)
 {
     Display* display = wm->display;
@@ -928,13 +949,9 @@ reparent_toplevels(WindowManager* wm)
     }
     int i;
     for (i = 0; i < nchildren; i++) {
-        XWindowAttributes wa;
-        XXGetWindowAttributes(wm, display, children[i], &wa);
-        if (IsUnmapped == wa.map_state) {
-            continue;
-        }
-        reparent_window(wm, children[i]);
+        reparent_mapped_child(wm, children[i]);
     }
+    XXFree(wm, children);
 }
 
 static unsigned long
@@ -1631,15 +1648,24 @@ process_focus_in(WindowManager* wm, XFocusChangeEvent* e)
 }
 
 static void
-process_map_request(WindowManager* wm, XMapRequestEvent* e)
+map_frame_of_child(WindowManager* wm, Window w)
 {
-    LOG(wm, "process_map_request: parent=0x%08x, window=0x%08x", e->parent, e->window);
-    Window w = e->window;
     Frame* frame = search_frame_of_child(wm, w);
     if (frame != NULL) {
         return;
     }
     reparent_window(wm, w);
+    map_frame_of_child(wm, w);
+}
+
+static void
+process_map_request(WindowManager* wm, XMapRequestEvent* e)
+{
+    Window w = e->window;
+#define FMT "process_map_request: parent=0x%08x, window=0x%08x"
+    LOG(wm, FMT, e->parent, w);
+#undef FMT
+    map_frame_of_child(wm, w);
 }
 
 static void
