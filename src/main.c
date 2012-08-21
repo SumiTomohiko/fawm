@@ -356,7 +356,7 @@ __XGetTextProperty__(const char* filename, int lineno, WindowManager* wm, Displa
 static Status
 __XGetWindowAttributes__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, XWindowAttributes* window_attributes_return)
 {
-    LOG_X(filename, lineno, wm, "XGetWindowAttributes(display, w=0x%08x, window_attributes_return)", w);
+    LOG_X(filename, lineno, wm, "XGetWindowAttributes(display, w=0x%08x, window_attributes_return=%p)", w, window_attributes_return);
     return XGetWindowAttributes(display, w, window_attributes_return);
 }
 
