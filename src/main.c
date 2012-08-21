@@ -1264,6 +1264,10 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         close_frame(wm, frame);
         return;
     }
+    if (is_on_minimize_icon(wm, w, x, y)) {
+        XXUnmapWindow(wm, display, frame->window);
+        return;
+    }
     XXRaiseWindow(wm, display, w);
     focus(wm, frame);
     grasp_frame(wm, detect_frame_position(wm, w, x, y), w, x, y);
