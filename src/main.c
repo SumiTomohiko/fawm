@@ -20,15 +20,25 @@
 #include <X11/cursorfont.h>
 
 #include <uwm/bitmaps/close_icon>
+#include <uwm/bitmaps/maximize_icon>
+#include <uwm/bitmaps/minimize_icon>
+
+struct Icon {
+    Pixmap active;
+    Pixmap inactive;
+    Pixmap current;
+};
+
+typedef struct Icon Icon;
 
 struct Frame {
     struct Frame* prev;
     struct Frame* next;
     Window window;
     Window child;
-    Pixmap active_close_icon;
-    Pixmap inactive_close_icon;
-    Pixmap close_icon;
+    struct Icon close_icon;
+    struct Icon maximize_icon;
+    struct Icon minimize_icon;
     XftDraw* draw;
     Bool wm_delete_window;
     char title[64];
@@ -617,20 +627,40 @@ compute_close_icon_x(WindowManager* wm, Window w)
     return wa.width - wm->frame_size - close_icon_width;
 }
 
+static int
+compute_maximize_icon_x(WindowManager* wm, Window w)
+{
+    return compute_close_icon_x(wm, w) - maximize_icon_width;
+}
+
+static int
+compute_minimize_icon_x(WindowManager* wm, Window w)
+{
+    return compute_maximize_icon_x(wm, w) - minimize_icon_width;
+}
+
 static void
-draw_close_icon(WindowManager* wm, Frame* frame)
+draw_icon(WindowManager* wm, Window w, Pixmap icon, int x, int width, int height)
 {
     Display* display = wm->display;
-    Window w = frame->window;
     XXCopyArea(
         wm,
         display,
-        frame->close_icon,
+        icon,
         w,
         DefaultGC(display, DefaultScreen(display)),
         0, 0,
-        close_icon_width, close_icon_height,
-        compute_close_icon_x(wm, w), wm->frame_size);
+        width, height,
+        x, wm->frame_size);
+}
+
+static void
+draw_icons(WindowManager* wm, Frame* frame)
+{
+    Window w = frame->window;
+    draw_icon(wm, w, frame->close_icon.current, compute_close_icon_x(wm, w), close_icon_width, close_icon_height);
+    draw_icon(wm, w, frame->maximize_icon.current, compute_maximize_icon_x(wm, w), maximize_icon_width, maximize_icon_height);
+    draw_icon(wm, w, frame->minimize_icon.current, compute_minimize_icon_x(wm, w), minimize_icon_width, minimize_icon_height);
 }
 
 static Atom
@@ -732,7 +762,7 @@ draw_frame(WindowManager* wm, Window w)
         return;
     }
     draw_title_text(wm, frame);
-    draw_close_icon(wm, frame);
+    draw_icons(wm, frame);
     draw_corner(wm, w);
 }
 
@@ -804,7 +834,7 @@ create_draw(WindowManager* wm, Window w)
 }
 
 static Pixmap
-create_close_icon(WindowManager* wm, Window w, int pixel)
+create_icon(WindowManager* wm, Window w, unsigned char* bits, int width, int height, int pixel)
 {
     Display* display = wm->display;
     int screen = DefaultScreen(display);
@@ -812,10 +842,18 @@ create_close_icon(WindowManager* wm, Window w, int pixel)
         wm,
         display,
         w,
-        (char*)close_icon_bits,
-        close_icon_width, close_icon_height,
+        (char*)bits,
+        width, height,
         BlackPixel(display, screen), pixel,
         DefaultDepth(display, screen));
+}
+
+static void
+setup_icon(WindowManager* wm, Window window, unsigned char* bits, int width, int height, Icon* icon)
+{
+    icon->active = create_icon(wm, window, bits, width, height, wm->focused_foreground_color);
+    icon->inactive = create_icon(wm, window, bits, width, height, wm->unfocused_foreground_color);
+    icon->current = icon->inactive;
 }
 
 static Frame*
@@ -836,11 +874,9 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
 
     Frame* frame = alloc_frame();
     frame->window = w;
-    Pixmap active_close_icon = create_close_icon(wm, w, focused_color);
-    frame->active_close_icon = active_close_icon;
-    int unfocused_color = wm->unfocused_foreground_color;
-    frame->inactive_close_icon = create_close_icon(wm, w, unfocused_color);
-    frame->close_icon = active_close_icon;
+    setup_icon(wm, w, close_icon_bits, close_icon_width, close_icon_height, &frame->close_icon);
+    setup_icon(wm, w, maximize_icon_bits, maximize_icon_width, maximize_icon_height, &frame->maximize_icon);
+    setup_icon(wm, w, minimize_icon_bits, minimize_icon_width, minimize_icon_height, &frame->minimize_icon);
     frame->draw = create_draw(wm, w);
     frame->wm_delete_window = False;
     assert(frame->draw != NULL);
@@ -969,14 +1005,22 @@ alloc_color(WindowManager* wm, const char* name)
 }
 
 static void
+free_icon(WindowManager* wm, Icon* icon)
+{
+    Display* display = wm->display;
+    XXFreePixmap(wm, display, icon->active);
+    XXFreePixmap(wm, display, icon->inactive);
+}
+
+static void
 free_frame(WindowManager* wm, Frame* frame)
 {
     remove_frame(wm, frame);
 
     XXftDrawDestroy(wm, frame->draw);
-    Display* display = wm->display;
-    XXFreePixmap(wm, display, frame->inactive_close_icon);
-    XXFreePixmap(wm, display, frame->active_close_icon);
+    free_icon(wm, &frame->close_icon);
+    free_icon(wm, &frame->maximize_icon);
+    free_icon(wm, &frame->minimize_icon);
 
     memset(frame, 0xfd, sizeof(*frame));
     free(frame);
@@ -1295,9 +1339,9 @@ static Pixmap
 select_close_icon(WindowManager* wm, Frame* frame, int x, int y)
 {
     if (is_on_close_icon(wm, frame->window, x, y)) {
-        return frame->active_close_icon;
+        return frame->close_icon.active;
     }
-    return frame->inactive_close_icon;
+    return frame->close_icon.inactive;
 }
 
 static void
@@ -1306,10 +1350,10 @@ change_close_icon(WindowManager* wm, Window w, int x, int y)
     Frame* frame = search_frame(wm, w);
     assert(frame != NULL);
     Pixmap icon = select_close_icon(wm, frame, x, y);
-    if (icon == frame->close_icon) {
+    if (icon == frame->close_icon.current) {
         return;
     }
-    frame->close_icon = icon;
+    frame->close_icon.current = icon;
     expose(wm, w);
 }
 
