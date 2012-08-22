@@ -871,7 +871,16 @@ static void
 change_frame_event_mask(WindowManager* wm, Window w)
 {
     XSetWindowAttributes swa;
-    swa.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | LeaveWindowMask | PointerMotionMask | SubstructureNotifyMask | SubstructureRedirectMask;
+    swa.event_mask = 0
+        | ButtonPressMask
+        | ButtonReleaseMask
+        | ExposureMask
+        | FocusChangeMask
+        | LeaveWindowMask
+        | PointerMotionMask
+        | PropertyChangeMask
+        | SubstructureNotifyMask
+        | SubstructureRedirectMask;
     XXChangeWindowAttributes(wm, wm->display, w, CWEventMask, &swa);
 }
 
@@ -2175,6 +2184,35 @@ process_leave_notify(WindowManager* wm, XCrossingEvent* e)
 }
 
 static void
+expose_frame(WindowManager* wm, Frame* frame)
+{
+    expose(wm, frame->window);
+}
+
+static void
+expose_taskbar(WindowManager* wm)
+{
+    expose(wm, wm->taskbar.window);
+}
+
+static void
+process_property_notify(WindowManager* wm, XPropertyEvent* e)
+{
+    Window w = e->window;
+    LOG(wm, "process_property_notify: window=0x%08x", w);
+    Frame* frame = search_frame_of_child(wm, w);
+    if (frame == NULL) {
+        return;
+    }
+    if ((e->atom != XA_WM_NAME) || (e->state != PropertyNewValue)) {
+        return;
+    }
+    get_window_name(wm, frame->title, array_sizeof(frame->title), w);
+    expose_frame(wm, frame);
+    expose_taskbar(wm);
+}
+
+static void
 process_event(WindowManager* wm, XEvent* e)
 {
     int type = e->type;
@@ -2219,6 +2257,10 @@ process_event(WindowManager* wm, XEvent* e)
     else if (type == MapRequest) {
         XMapRequestEvent* ev = &e->xmaprequest;
         process_map_request(wm, ev);
+    }
+    else if (type == PropertyNotify) {
+        XPropertyEvent* ev = &e->xproperty;
+        process_property_notify(wm, ev);
     }
     else if (type == UnmapNotify) {
         XUnmapEvent* ev = &e->xunmap;
