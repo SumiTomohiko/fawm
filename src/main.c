@@ -761,6 +761,16 @@ intern(WindowManager* wm, const char* name)
 }
 
 static void
+__XFreeStringList__(const char* filename, int lineno, WindowManager* wm, char** list)
+{
+    LOG_X(filename, lineno, wm, "XFreeStringList(list=%p)", list);
+    XFreeStringList(list);
+}
+
+#define XXFreeStringList(wm, a) \
+    __XFreeStringList__(__FILE__, __LINE__, (wm), (a))
+
+static void
 get_window_name(WindowManager* wm, char* dest, int size, Window w)
 {
     XTextProperty prop;
@@ -784,7 +794,7 @@ get_window_name(WindowManager* wm, char* dest, int size, Window w)
         return;
     }
     snprintf(dest, size, "%s", strings[0]);
-    XFreeStringList(strings);
+    XXFreeStringList(wm, strings);
 }
 
 static void
