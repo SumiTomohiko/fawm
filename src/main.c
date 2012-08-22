@@ -1261,9 +1261,24 @@ static void
 map_popup_menu(WindowManager* wm, int x, int y)
 {
     Display* display = wm->display;
-    Window popup_menu = wm->popup_menu.window;
-    XXMoveWindow(wm, display, popup_menu, x - 16, y + 8);
-    XXMapRaised(wm, display, popup_menu);
+    Window w = wm->popup_menu.window;
+    unsigned int menu_width;
+    unsigned int menu_height;
+    get_geometry(wm, w, &menu_width, &menu_height);
+    unsigned int root_width;
+    unsigned int root_height;
+    get_geometry(wm, DefaultRootWindow(display), &root_width, &root_height);
+    int menu_x = x;
+    int menu_y = y + 1;
+    if (root_width < menu_x + menu_width) {
+        menu_x = x - menu_width;
+    }
+    if (root_height < menu_y + menu_height) {
+        menu_y = y - menu_height - 1;
+    }
+
+    XXMoveWindow(wm, display, w, menu_x, menu_y);
+    XXMapRaised(wm, display, w);
 }
 
 static GraspedPosition
