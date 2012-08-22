@@ -78,6 +78,7 @@ struct WindowManager {
     int frame_size;
     int title_height;
     int resizable_corner_size;
+    int padding_size;
 
     /* FIXME: size/capacity of frames and frames_z_order are same. Share it. */
     Array frames;
@@ -121,6 +122,8 @@ struct WindowManager {
         XftFont* clock_font;
         int clock_margin;
         time_t clock;
+        GC line_gc;
+        GC focused_gc;
     } taskbar;
 
     struct {
@@ -380,6 +383,18 @@ __XDefineCursor__(const char* filename, int lineno, WindowManager* wm, Display* 
 
 #define XXDefineCursor(wm, a, b, c) \
     __XDefineCursor__(__FILE__, __LINE__, (wm), (a), (b), (c))
+
+static int
+__XDrawRectangle__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, GC gc, int x, int y, int width, int height)
+{
+#define FMT "XDrawRectangle(display, d=0x%08x, gc, x=%d, y=%d, width=%d, height=%d)"
+    LOG_X(filename, lineno, wm, FMT, d, x, y, width, height);
+#undef FMT
+    return XDrawRectangle(display, d, gc, x, y, width, height);
+}
+
+#define XXDrawRectangle(wm, a, b, c, d, e, f, g) \
+    __XDrawRectangle__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g))
 
 static int
 __XDrawLine__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, GC gc, int x1, int y1, int x2, int y2)
@@ -959,11 +974,28 @@ move_frame_to_z_order_head(WindowManager* wm, Frame* frame)
     prepend_to_array(a, frame);
 }
 
+static int
+__XClearArea__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, int x, int y, unsigned width, unsigned height, Bool exposures)
+{
+    LOG_X(filename, lineno, wm, "XClearArea(display, w=0x%08x, x=%d, y=%d, width=%u, height=%u, exposures)", w, x, y, width, height);
+    return XClearArea(display, w, x, y, width, height, exposures);
+}
+
+#define XXClearArea(wm, a, b, c, d, e, f, g) \
+    __XClearArea__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g))
+
+static void
+expose(WindowManager* wm, Window w)
+{
+    XXClearArea(wm, wm->display, w, 0, 0, 0, 0, True);
+}
+
 static void
 focus(WindowManager* wm, Frame* frame)
 {
     move_frame_to_z_order_head(wm, frame);
     XXSetInputFocus(wm, wm->display, frame->child, RevertToNone, CurrentTime);
+    expose(wm, wm->taskbar.window);
 }
 
 static void
@@ -1397,22 +1429,6 @@ draw_popup_menu(WindowManager* wm)
     }
 }
 
-static int
-__XClearArea__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, int x, int y, unsigned width, unsigned height, Bool exposures)
-{
-    LOG_X(filename, lineno, wm, "XClearArea(display, w=0x%08x, x=%d, y=%d, width=%u, height=%u, exposures)", w, x, y, width, height);
-    return XClearArea(display, w, x, y, width, height, exposures);
-}
-
-#define XXClearArea(wm, a, b, c, d, e, f, g) \
-    __XClearArea__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g))
-
-static void
-expose(WindowManager* wm, Window w)
-{
-    XXClearArea(wm, wm->display, w, 0, 0, 0, 0, True);
-}
-
 static void
 highlight_selected_popup_item(WindowManager* wm, int x, int y)
 {
@@ -1670,7 +1686,7 @@ compute_text_width(WindowManager* wm, XftFont* font, const char* text, int len)
 }
 
 static void
-draw_taskbar(WindowManager* wm)
+draw_clock(WindowManager* wm, int* px)
 {
     time_t now;
     time(&now);
@@ -1686,13 +1702,67 @@ draw_taskbar(WindowManager* wm)
 
     XftFont* font = wm->taskbar.clock_font;
     int len = strlen(text);
-    int margin = wm->taskbar.clock_margin;
-    int x = width - compute_text_width(wm, font, text, len) - margin;
+    int x = width - compute_text_width(wm, font, text, len) - wm->padding_size;
 
     XftDraw* draw = wm->taskbar.draw;
     XftColor* color = &wm->title_color;
-    int y = font->ascent;
+    int y = font->ascent + wm->padding_size;
     XXftDrawStringUtf8(wm, draw, color, font, x, y, (XftChar8*)text, len);
+
+    *px = x;
+}
+
+static void
+draw_list_rect(WindowManager* wm, Frame* frame, int x, int y, int width, int height)
+{
+    Display* display = wm->display;
+    Window w = wm->taskbar.window;
+    if (frame == wm->frames_z_order.items[0]) {
+        GC gc = wm->taskbar.focused_gc;
+        XXFillRectangle(wm, display, w, gc, x, y, width, height);
+    }
+    GC gc = wm->taskbar.line_gc;
+    XXDrawRectangle(wm, display, w, gc, x, y, width, height);
+}
+
+static void
+draw_list_entry(WindowManager* wm, Frame* frame, int x, int y, int width, int height)
+{
+    draw_list_rect(wm, frame, x, y, width, height);
+
+    XXftDrawStringUtf8(wm, wm->taskbar.draw, &wm->title_color, wm->title_font, x, y + height, (XftChar8*)frame->title, strlen(frame->title));
+}
+
+static void
+draw_window_list(WindowManager* wm, int width)
+{
+    Window w = wm->taskbar.window;
+    unsigned int _;
+    unsigned int taskbar_height;
+    get_geometry(wm, w, &_, &taskbar_height);
+
+    int nframes = wm->frames.size;
+    if (nframes == 0) {
+        return;
+    }
+    int item_width = width / nframes;
+    int padding_size = wm->padding_size;
+    int i;
+    for (i = 0; i < nframes; i++) {
+        int x = item_width * i + padding_size;
+        int y = padding_size;
+        int width = item_width - padding_size;
+        int height = taskbar_height - 2 * padding_size;
+        draw_list_entry(wm, wm->frames.items[i], x, y, width, height);
+    }
+}
+
+static void
+draw_taskbar(WindowManager* wm)
+{
+    int clock_x;
+    draw_clock(wm, &clock_x);
+    draw_window_list(wm, clock_x - wm->padding_size);
 }
 
 static void
@@ -2186,6 +2256,14 @@ setup_cursors(WindowManager* wm)
 #undef CREATE_CURSOR
 }
 
+static GC
+create_foreground_gc(WindowManager* wm, Window w, int pixel)
+{
+    XGCValues v;
+    v.foreground = pixel;
+    return XXCreateGC(wm, wm->display, w, GCForeground, &v);
+}
+
 static void
 setup_taskbar(WindowManager* wm)
 {
@@ -2196,13 +2274,14 @@ setup_taskbar(WindowManager* wm)
     get_geometry(wm, root, &root_width, &root_height);
 
     int font_height = compute_font_height(wm->title_font);
+    int height = font_height + 2 * wm->padding_size;
     int border_size = wm->border_size;
     int screen = DefaultScreen(display);
     Window w = XXCreateSimpleWindow(
         wm,
         display, root,
-        - border_size, root_height - font_height,
-        root_width, font_height,
+        - border_size, root_height - height,
+        root_width, height,
         border_size,
         BlackPixel(display, screen), wm->unfocused_foreground_color);
     LOG(wm, "taskbar: 0x%08x", w);
@@ -2210,6 +2289,9 @@ setup_taskbar(WindowManager* wm)
     wm->taskbar.window = w;
     wm->taskbar.draw = create_draw(wm, w);
     wm->taskbar.clock = -1;
+
+    wm->taskbar.line_gc = create_foreground_gc(wm, w, BlackPixel(display, screen));
+    wm->taskbar.focused_gc = create_foreground_gc(wm, w, wm->focused_foreground_color);
 }
 
 static FILE*
@@ -2238,6 +2320,7 @@ setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
     wm->frame_size = 4;
     wm->title_height = 16;
     wm->resizable_corner_size = 32;
+    wm->padding_size = wm->frame_size;
     initialize_array(&wm->frames);
     initialize_array(&wm->frames_z_order);
     release_frame(wm);
