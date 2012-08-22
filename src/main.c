@@ -2470,7 +2470,7 @@ setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
     wm->display = display;
     wm->running = True;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
-    wm->unfocused_foreground_color = alloc_color(wm, "grey");
+    wm->unfocused_foreground_color = alloc_color(wm, "light grey");
     wm->border_size = wm->client_border_size = 1;
     wm->frame_size = 4;
     wm->title_height = 16;
