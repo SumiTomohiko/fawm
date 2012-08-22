@@ -80,8 +80,7 @@ struct WindowManager {
     int resizable_corner_size;
     int padding_size;
 
-    /* FIXME: size/capacity of frames and frames_z_order are same. Share it. */
-    Array frames;
+    Array all_frames;
     Array frames_z_order;
 
     GraspedPosition grasped_position;
@@ -208,7 +207,9 @@ remove_from_array(Array* a, Frame* f)
     int i;
     for (i = 0; (i < size) && (a->items[i] != f); i++) {
     }
-    assert(i < size);
+    if (i == size) {
+        return;
+    }
     int rest = size - i - 1;
     memcpy(&a->items[i], &a->items[i + 1], sizeof(a->items[0]) * rest);
     a->size--;
@@ -252,7 +253,7 @@ is_child(Frame* f, Window w)
 static Frame*
 search_frame_of_child(WindowManager* wm, Window w)
 {
-    return search_in_array(&wm->frames, is_child, w);
+    return search_in_array(&wm->all_frames, is_child, w);
 }
 
 static Bool
@@ -264,7 +265,7 @@ is_frame(Frame* f, Window w)
 static Frame*
 search_frame(WindowManager* wm, Window w)
 {
-    return search_in_array(&wm->frames, is_frame, w);
+    return search_in_array(&wm->all_frames, is_frame, w);
 }
 
 static int
@@ -881,7 +882,7 @@ alloc_frame()
 static void
 insert_frame(WindowManager* wm, Frame* frame)
 {
-    append_to_array(&wm->frames, frame);
+    append_to_array(&wm->all_frames, frame);
     prepend_to_array(&wm->frames_z_order, frame);
 }
 
@@ -996,8 +997,10 @@ expose(WindowManager* wm, Window w)
 static void
 focus(WindowManager* wm, Frame* frame)
 {
+    Display* display = wm->display;
+    XXMapWindow(wm, display, frame->window);
     move_frame_to_z_order_head(wm, frame);
-    XXSetInputFocus(wm, wm->display, frame->child, RevertToNone, CurrentTime);
+    XXSetInputFocus(wm, display, frame->child, RevertToNone, CurrentTime);
     expose(wm, wm->taskbar.window);
 }
 
@@ -1115,7 +1118,7 @@ free_icon(WindowManager* wm, Icon* icon)
 static void
 free_frame(WindowManager* wm, Frame* frame)
 {
-    remove_from_array(&wm->frames, frame);
+    remove_from_array(&wm->all_frames, frame);
     remove_from_array(&wm->frames_z_order, frame);
 
     XXftDrawDestroy(wm, frame->draw);
@@ -1148,15 +1151,11 @@ destroy_frame(WindowManager* wm, Frame* frame)
 static void
 focus_top_frame(WindowManager* wm)
 {
-    Frame** items = wm->frames_z_order.items;
-    int size = wm->frames_z_order.size;
-    int i;
-    for (i = 0; (i < size) && !is_mapped(wm, items[i]->window); i++) {
-    }
-    if (i == size) {
+    if (wm->frames_z_order.size == 0) {
+        expose(wm, wm->taskbar.window);
         return;
     }
-    focus(wm, items[i]);
+    focus(wm, wm->frames_z_order.items[0]);
 }
 
 static void
@@ -1338,11 +1337,20 @@ focus_window_of_taskbar(WindowManager* wm, int x, int y)
     if (wm->taskbar.clock_x < x) {
         return;
     }
-    int nframes = wm->frames.size;
+    int nframes = wm->all_frames.size;
     if (nframes == 0) {
         return;
     }
-    focus(wm, wm->frames.items[x / (wm->taskbar.clock_x / nframes)]);
+    focus(wm, wm->all_frames.items[x / (wm->taskbar.clock_x / nframes)]);
+}
+
+static void
+unmap_frame(WindowManager* wm, Frame* frame)
+{
+    remove_from_array(&wm->frames_z_order, frame);
+    XXUnmapWindow(wm, wm->display, frame->window);
+
+    focus_top_frame(wm);
 }
 
 static void
@@ -1380,7 +1388,7 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
         return;
     }
     if (is_on_minimize_icon(wm, w, x, y)) {
-        XXUnmapWindow(wm, display, frame->window);
+        unmap_frame(wm, frame);
         return;
     }
     XXRaiseWindow(wm, display, w);
@@ -1733,16 +1741,27 @@ draw_clock(WindowManager* wm)
 }
 
 static void
+fill_top_frame_rect(WindowManager* wm, Frame* frame, int x, int y, int width, int height)
+{
+    if (wm->frames_z_order.size == 0) {
+        return;
+    }
+    if (frame != wm->frames_z_order.items[0]) {
+        return;
+    }
+    Window w = wm->taskbar.window;
+    GC gc = wm->taskbar.focused_gc;
+    XXFillRectangle(wm, wm->display, w, gc, x, y, width, height);
+}
+
+static void
 draw_list_rect(WindowManager* wm, Frame* frame, int x, int y, int width, int height)
 {
-    Display* display = wm->display;
+    fill_top_frame_rect(wm, frame, x, y, width, height);
+
     Window w = wm->taskbar.window;
-    if (frame == wm->frames_z_order.items[0]) {
-        GC gc = wm->taskbar.focused_gc;
-        XXFillRectangle(wm, display, w, gc, x, y, width, height);
-    }
     GC gc = wm->taskbar.line_gc;
-    XXDrawRectangle(wm, display, w, gc, x, y, width, height);
+    XXDrawRectangle(wm, wm->display, w, gc, x, y, width, height);
 }
 
 static void
@@ -1761,7 +1780,7 @@ draw_window_list(WindowManager* wm, int width)
     unsigned int taskbar_height;
     get_geometry(wm, w, &_, &taskbar_height);
 
-    int nframes = wm->frames.size;
+    int nframes = wm->all_frames.size;
     if (nframes == 0) {
         return;
     }
@@ -1773,7 +1792,7 @@ draw_window_list(WindowManager* wm, int width)
         int y = padding_size;
         int width = item_width - padding_size;
         int height = taskbar_height - 2 * padding_size;
-        draw_list_entry(wm, wm->frames.items[i], x, y, width, height);
+        draw_list_entry(wm, wm->all_frames.items[i], x, y, width, height);
     }
 }
 
@@ -1920,6 +1939,7 @@ map_frame_of_child(WindowManager* wm, Window w)
 {
     Frame* frame = search_frame_of_child(wm, w);
     if (frame != NULL) {
+        focus(wm, frame);
         return;
     }
     reparent_window(wm, w);
@@ -1944,8 +1964,7 @@ process_unmap_notify(WindowManager* wm, XUnmapEvent* e)
     if (frame == NULL) {
         return;
     }
-    XXUnmapWindow(wm, wm->display, frame->window);
-    focus_top_frame(wm);
+    unmap_frame(wm, frame);
 }
 
 static const char*
@@ -2341,7 +2360,7 @@ setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
     wm->title_height = 16;
     wm->resizable_corner_size = 32;
     wm->padding_size = wm->frame_size;
-    initialize_array(&wm->frames);
+    initialize_array(&wm->all_frames);
     initialize_array(&wm->frames_z_order);
     release_frame(wm);
     setup_title_font(wm);
