@@ -2328,7 +2328,7 @@ setup_popup_menu(WindowManager* wm)
         0, 0,
         42, 42, /* They are dummy. They will be defined later. */
         wm->border_size,
-        BlackPixel(display, screen), WhitePixel(display, screen));
+        BlackPixel(display, screen), wm->unfocused_foreground_color);
     LOG(wm, "popup menu: 0x%08x", w);
     change_popup_menu_event_mask(wm, w);
     wm->popup_menu.window = w;
@@ -2339,7 +2339,7 @@ setup_popup_menu(WindowManager* wm)
     wm->popup_menu.title_gc = XXCreateGC(wm, display, w, mask, &title_gc);
 
     XGCValues selected_gc;
-    selected_gc.foreground = alloc_color(wm, "yellow");
+    selected_gc.foreground = wm->focused_foreground_color;
     wm->popup_menu.selected_gc = XXCreateGC(wm, display, w, mask, &selected_gc);
 
     wm->popup_menu.draw = create_draw(wm, w);
