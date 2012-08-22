@@ -119,9 +119,12 @@ struct WindowManager {
     struct {
         Window window;
         XftDraw* draw;
+
         XftFont* clock_font;
         int clock_margin;
         time_t clock;
+        int clock_x;
+
         GC line_gc;
         GC focused_gc;
     } taskbar;
@@ -1330,6 +1333,19 @@ close_frame(WindowManager* wm, Frame* frame)
 }
 
 static void
+focus_window_of_taskbar(WindowManager* wm, int x, int y)
+{
+    if (wm->taskbar.clock_x < x) {
+        return;
+    }
+    int nframes = wm->frames.size;
+    if (nframes == 0) {
+        return;
+    }
+    focus(wm, wm->frames.items[x / (wm->taskbar.clock_x / nframes)]);
+}
+
+static void
 process_button_press(WindowManager* wm, XButtonEvent* e)
 {
     LOG(wm, "process_button_press: window=0x%08x, root=0x%08x, subwindow=0x%08x", e->window, e->root, e->subwindow);
@@ -1340,6 +1356,10 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
     Display* display = wm->display;
     if (w == DefaultRootWindow(display)) {
         map_popup_menu(wm, e->x, e->y);
+        return;
+    }
+    else if (w == wm->taskbar.window) {
+        focus_window_of_taskbar(wm, e->x, e->y);
         return;
     }
     Frame* frame = search_frame_of_child(wm, w);
@@ -1686,7 +1706,7 @@ compute_text_width(WindowManager* wm, XftFont* font, const char* text, int len)
 }
 
 static void
-draw_clock(WindowManager* wm, int* px)
+draw_clock(WindowManager* wm)
 {
     time_t now;
     time(&now);
@@ -1709,7 +1729,7 @@ draw_clock(WindowManager* wm, int* px)
     int y = font->ascent + wm->padding_size;
     XXftDrawStringUtf8(wm, draw, color, font, x, y, (XftChar8*)text, len);
 
-    *px = x;
+    wm->taskbar.clock_x = x;
 }
 
 static void
@@ -1760,9 +1780,8 @@ draw_window_list(WindowManager* wm, int width)
 static void
 draw_taskbar(WindowManager* wm)
 {
-    int clock_x;
-    draw_clock(wm, &clock_x);
-    draw_window_list(wm, clock_x - wm->padding_size);
+    draw_clock(wm);
+    draw_window_list(wm, wm->taskbar.clock_x - wm->padding_size);
 }
 
 static void
@@ -2130,23 +2149,23 @@ process_event(WindowManager* wm, XEvent* e)
 }
 
 static void
-change_event_mask_exposure(WindowManager* wm, Window w)
+change_event_mask(WindowManager* wm, Window w, long event_mask)
 {
     XSetWindowAttributes swa;
-    swa.event_mask = ExposureMask;
+    swa.event_mask = event_mask;
     XXChangeWindowAttributes(wm, wm->display, w, CWEventMask, &swa);
 }
 
 static void
 change_taskbar_event_mask(WindowManager* wm, Window w)
 {
-    change_event_mask_exposure(wm, w);
+    change_event_mask(wm, w, ButtonPressMask | ExposureMask);
 }
 
 static void
 change_popup_menu_event_mask(WindowManager* wm, Window w)
 {
-    change_event_mask_exposure(wm, w);
+    change_event_mask(wm, w, ExposureMask);
 }
 
 static int
@@ -2289,6 +2308,7 @@ setup_taskbar(WindowManager* wm)
     wm->taskbar.window = w;
     wm->taskbar.draw = create_draw(wm, w);
     wm->taskbar.clock = -1;
+    wm->taskbar.clock_x = 0;
 
     wm->taskbar.line_gc = create_foreground_gc(wm, w, BlackPixel(display, screen));
     wm->taskbar.focused_gc = create_foreground_gc(wm, w, wm->focused_foreground_color);
