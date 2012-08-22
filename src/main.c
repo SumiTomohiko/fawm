@@ -1277,6 +1277,7 @@ map_popup_menu(WindowManager* wm, int x, int y)
         menu_y = y - menu_height - 1;
     }
 
+    wm->popup_menu.selected_item = -1;
     XXMoveWindow(wm, display, w, menu_x, menu_y);
     XXMapRaised(wm, display, w);
 }
