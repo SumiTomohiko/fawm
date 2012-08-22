@@ -40,6 +40,8 @@ struct Frame {
     XftDraw* draw;
     Bool wm_delete_window;
     char title[64];
+    int width_inc;
+    int height_inc;
 };
 
 typedef struct Frame Frame;
@@ -87,6 +89,8 @@ struct WindowManager {
     Window grasped_frame;
     int grasped_x;
     int grasped_y;
+    int grasped_width;
+    int grasped_height;
 
     XftFont* title_font;
     XftColor title_color;
@@ -961,8 +965,9 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
     setup_icon(wm, w, maximize_icon_bits, maximize_icon_width, maximize_icon_height, &frame->maximize_icon);
     setup_icon(wm, w, minimize_icon_bits, minimize_icon_width, minimize_icon_height, &frame->minimize_icon);
     frame->draw = create_draw(wm, w);
-    frame->wm_delete_window = False;
     assert(frame->draw != NULL);
+    frame->wm_delete_window = False;
+    frame->width_inc = frame->height_inc = 1;
 
     insert_frame(wm, frame);
 
@@ -1027,6 +1032,30 @@ read_protocols(WindowManager* wm, Frame* frame)
     XFree(protos);
 }
 
+static Status
+__XGetWMNormalHints__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, XSizeHints* hints, long* supplied_return)
+{
+    LOG_X(filename, lineno, wm, "XGetWMNormalHints(display, w=0x%08x, hints=%p, supplied_return=%p)", w, hints, supplied_return);
+    return XGetWMNormalHints(display, w, hints, supplied_return);
+}
+
+#define XXGetWMNormalHints(wm, a, b, c, d) \
+    __XGetWMNormalHints__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
+
+static void
+get_normal_hints(WindowManager* wm, Frame* frame)
+{
+    XSizeHints hints;
+    long _;
+    XXGetWMNormalHints(wm, wm->display, frame->child, &hints, &_);
+    if ((hints.flags & PResizeInc) == 0) {
+        return;
+    }
+    frame->width_inc = hints.width_inc;
+    frame->height_inc = hints.height_inc;
+    LOG(wm, "PResizeInc: window=0x%08x, width_inc=%d, height_inc=%d", frame->child, hints.width_inc, hints.height_inc);
+}
+
 static void
 reparent_window(WindowManager* wm, Window w)
 {
@@ -1047,6 +1076,7 @@ reparent_window(WindowManager* wm, Window w)
     Window parent = frame->window;
     LOG(wm, "Reparented: frame=0x%08x, child=0x%08x", parent, w);
     XXReparentWindow(wm, display, w, parent, x, y);
+    get_normal_hints(wm, frame);
     read_protocols(wm, frame);
 
     XXGrabButton(wm, display, Button1, AnyModifier, w, True, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
@@ -1201,6 +1231,11 @@ grasp_frame(WindowManager* wm, GraspedPosition pos, Window w, int x, int y)
     wm->grasped_frame = w;
     wm->grasped_x = x;
     wm->grasped_y = y;
+
+    XWindowAttributes wa;
+    XXGetWindowAttributes(wm, wm->display, w, &wa);
+    wm->grasped_width = wa.width;
+    wm->grasped_height = wa.height;
 }
 
 static void
@@ -1574,6 +1609,12 @@ change_cursor(WindowManager* wm, Window w, int x, int y)
     XXDefineCursor(wm, wm->display, w, cursor);
 }
 
+static int
+floor_int(int n, int inc)
+{
+    return (n / inc) * inc;
+}
+
 static void
 process_motion_notify(WindowManager* wm, XMotionEvent* e)
 {
@@ -1616,78 +1657,86 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     XXGetWindowAttributes(wm, display, child, &child_attrs);
     int new_width;
     int new_height;
+    int inc_x;
+    int inc_y;
     switch (wm->grasped_position) {
     case GP_NORTH:
         new_width = frame_attrs.width;
-        new_height = frame_attrs.y + frame_attrs.height - new_y;
+        inc_y = floor_int(frame_attrs.y - new_y, frame->height_inc);
+        new_height = frame_attrs.height + inc_y;
         XXMoveResizeWindow(
             wm,
             display, w,
-            frame_attrs.x, new_y,
+            frame_attrs.x, frame_attrs.y - inc_y,
             new_width, new_height);
         resize_child(wm, child, new_width, new_height);
         return;
     case GP_NORTH_EAST:
-        new_width = x + (frame_attrs.width - wm->grasped_x);
-        new_height = frame_attrs.y + frame_attrs.height - new_y;
+        inc_x = floor_int(x - wm->grasped_x, frame->width_inc);
+        new_width = wm->grasped_width + inc_x;
+        inc_y = floor_int(frame_attrs.y - new_y, frame->height_inc);
+        new_height = frame_attrs.height + inc_y;
         XXMoveResizeWindow(
             wm,
             display, w,
-            frame_attrs.x, new_y,
+            frame_attrs.x, frame_attrs.y - inc_y,
             new_width, new_height);
         resize_child(wm, child, new_width, new_height);
-        wm->grasped_x = x;
         return;
     case GP_EAST:
-        new_width = x + (frame_attrs.width - wm->grasped_x);
+        inc_x = floor_int(x - wm->grasped_x, frame->width_inc);
+        new_width = wm->grasped_width + inc_x;
         new_height = frame_attrs.height;
         XXResizeWindow(wm, display, w, new_width, new_height);
         resize_child(wm, child, new_width, new_height);
-        wm->grasped_x = x;
         return;
     case GP_SOUTH_EAST:
-        new_width = x + (frame_attrs.width - wm->grasped_x);
-        new_height = y + (frame_attrs.height - wm->grasped_y);
+        inc_x = floor_int(x - wm->grasped_x, frame->width_inc);
+        new_width = wm->grasped_width + inc_x;
+        inc_y = floor_int(y - wm->grasped_y, frame->height_inc);
+        new_height = wm->grasped_height + inc_y;
         XXResizeWindow(wm, display, w, new_width, new_height);
         resize_child(wm, child, new_width, new_height);
-        wm->grasped_x = x;
-        wm->grasped_y = y;
         return;
     case GP_SOUTH:
         new_width = frame_attrs.width;
-        new_height = y + (frame_attrs.height - wm->grasped_y);
+        inc_y = floor_int(y - wm->grasped_y, frame->height_inc);
+        new_height = wm->grasped_height + inc_y;
         XXResizeWindow(wm, display, w, new_width, new_height);
         resize_child(wm, child, new_width, new_height);
-        wm->grasped_y = y;
         return;
     case GP_SOUTH_WEST:
-        new_width = frame_attrs.x + frame_attrs.width - new_x;
-        new_height = y + (frame_attrs.height - wm->grasped_y);
+        inc_x = floor_int(frame_attrs.x - new_x, frame->width_inc);
+        new_width = frame_attrs.width + inc_x;
+        inc_y = floor_int(y - wm->grasped_y, frame->height_inc);
+        new_height = wm->grasped_height + inc_y;
         XXMoveResizeWindow(
             wm,
             display, w,
-            new_x, frame_attrs.y,
+            frame_attrs.x - inc_x, frame_attrs.y,
             new_width, new_height);
         resize_child(wm, child, new_width, new_height);
-        wm->grasped_y = y;
         return;
     case GP_WEST:
-        new_width = frame_attrs.x + frame_attrs.width - new_x;
+        inc_x = floor_int(frame_attrs.x - new_x, frame->width_inc);
+        new_width = frame_attrs.width + inc_x;
         new_height = frame_attrs.height;
         XXMoveResizeWindow(
             wm,
             display, w,
-            new_x, frame_attrs.y,
+            frame_attrs.x - inc_x, frame_attrs.y,
             new_width, new_height);
         resize_child(wm, child, new_width, new_height);
         return;
     case GP_NORTH_WEST:
-        new_width = frame_attrs.x + frame_attrs.width - new_x;
-        new_height = frame_attrs.y + frame_attrs.height - new_y;
+        inc_x = floor_int(frame_attrs.x - new_x, frame->width_inc);
+        new_width = frame_attrs.width + inc_x;
+        inc_y = floor_int(frame_attrs.y - new_y, frame->height_inc);
+        new_height = frame_attrs.height + inc_y;
         XXMoveResizeWindow(
             wm,
             display, w,
-            new_x, new_y,
+            frame_attrs.x - inc_x, frame_attrs.y - inc_y,
             new_width, new_height);
         resize_child(wm, child, new_width, new_height);
         return;
