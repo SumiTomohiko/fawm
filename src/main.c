@@ -1021,10 +1021,8 @@ expose(WindowManager* wm, Window w)
 static void
 focus(WindowManager* wm, Frame* frame)
 {
-    Display* display = wm->display;
-    XXMapWindow(wm, display, frame->window);
     move_frame_to_z_order_head(wm, frame);
-    XXSetInputFocus(wm, display, frame->child, RevertToNone, CurrentTime);
+    XXSetInputFocus(wm, wm->display, frame->child, RevertToNone, CurrentTime);
     expose(wm, wm->taskbar.window);
 }
 
@@ -1411,7 +1409,10 @@ focus_window_of_taskbar(WindowManager* wm, int x, int y)
     if (nframes == 0) {
         return;
     }
-    focus(wm, wm->all_frames.items[x / (wm->taskbar.clock_x / nframes)]);
+    Frame* frame = wm->all_frames.items[x / (wm->taskbar.clock_x / nframes)];
+    XXMapWindow(wm, wm->display, frame->window);
+    XXRaiseWindow(wm, wm->display, frame->window);
+    focus(wm, frame);
 }
 
 static void
@@ -2023,6 +2024,10 @@ map_frame_of_child(WindowManager* wm, Window w)
 {
     Frame* frame = search_frame_of_child(wm, w);
     if (frame != NULL) {
+        Display* display = wm->display;
+        XXMapWindow(wm, display, frame->window);
+        XXMapWindow(wm, display, frame->child);
+        XXRaiseWindow(wm, display, frame->window);
         focus(wm, frame);
         return;
     }
