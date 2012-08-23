@@ -3,7 +3,7 @@ title: Taskbar must be a single process.
 desc: ""
 type: :task
 component: core
-release: 0.1.0
+release: 
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
 status: :unstarted
 disposition: 
@@ -15,4 +15,8 @@ log_events:
 - - 2012-01-24 20:13:45.403055 Z
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - created
+  - ""
+- - 2012-08-23 16:26:47.080417 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - unassigned from release 0.1.0
   - ""
