@@ -2553,6 +2553,7 @@ error_handler(Display* display, XErrorEvent* e)
     log_error(fp, "Error Code of Failed Request: %u (%s)", code, msg);
     log_error(fp, "Major Opcode of Failed Request: %u", e->request_code);
     log_error(fp, "Minor Opcode of Failed Request: %u", e->minor_code);
+    log_error(fp, "Resource ID: 0x%08x", e->resourceid);
     fclose(fp);
     abort();
 
