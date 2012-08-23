@@ -2569,7 +2569,6 @@ error_handler(Display* display, XErrorEvent* e)
     log_error(fp, "XRequest: %s", msg2);
 
     fclose(fp);
-    abort();
 
     return 0;
 }
