@@ -2557,10 +2557,17 @@ error_handler(Display* display, XErrorEvent* e)
     long code = e->error_code;
     char msg[64];
     XGetErrorText(display, code, msg, array_sizeof(msg));
-    log_error(fp, "Error Code of Failed Request: %u (%s)", code, msg);
-    log_error(fp, "Major Opcode of Failed Request: %u", e->request_code);
-    log_error(fp, "Minor Opcode of Failed Request: %u", e->minor_code);
+    log_error(fp, "Error Code: %u (%s)", code, msg);
+    log_error(fp, "Major Opcode: %u", e->request_code);
+    log_error(fp, "Minor Opcode: %u", e->minor_code);
     log_error(fp, "Resource ID: 0x%08x", e->resourceid);
+
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%d", e->request_code);
+    char msg2[64];
+    XGetErrorDatabaseText(display, "XRequest", buf, "?", msg2, sizeof(msg2));
+    log_error(fp, "XRequest: %s", msg2);
+
     fclose(fp);
     abort();
 
