@@ -1208,8 +1208,9 @@ focus_top_frame(WindowManager* wm)
 static void
 process_destroy_notify(WindowManager* wm, XDestroyWindowEvent* e)
 {
-    LOG(wm, "process_destroy_notify: event=0x%08x, window=0x%08x", e->event, e->window);
-    Frame* frame = search_frame_of_child(wm, e->window);
+    Window w = e->window;
+    LOG(wm, "process_destroy_notify: event=0x%08x, window=0x%08x", e->event, w);
+    Frame* frame = search_frame_of_child(wm, w);
     if (frame == NULL) {
         return;
     }
