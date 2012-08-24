@@ -811,7 +811,7 @@ draw_title_text(WindowManager* wm, Frame* frame)
 {
     int frame_size = wm->frame_size;
     int x = frame_size;
-    int y = frame_size + wm->title_height;
+    int y = frame_size + wm->title_font->ascent;
     draw_title_font_string(wm, frame->draw, x, y, frame->title);
 }
 
@@ -2475,18 +2475,19 @@ setup_window_manager(WindowManager* wm, Display* display, const char* log_file)
     wm->log_file = open_log(log_file);
 
     wm->display = display;
+    setup_title_font(wm);
+
     wm->running = True;
     wm->focused_foreground_color = alloc_color(wm, "light pink");
     wm->unfocused_foreground_color = alloc_color(wm, "light grey");
     wm->border_size = wm->client_border_size = 1;
     wm->frame_size = 4;
-    wm->title_height = 16;
+    wm->title_height = wm->title_font->height;
     wm->resizable_corner_size = 32;
     wm->padding_size = wm->frame_size;
     initialize_array(&wm->all_frames);
     initialize_array(&wm->frames_z_order);
     release_frame(wm);
-    setup_title_font(wm);
     setup_cursors(wm);
     setup_popup_menu(wm);
     setup_taskbar(wm);
