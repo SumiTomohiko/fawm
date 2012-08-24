@@ -19,29 +19,23 @@
 #include <X11/Xft/Xft.h>
 #include <X11/cursorfont.h>
 
-#include <uwm/bitmaps/close_icon>
-#include <uwm/bitmaps/maximize_icon>
-#include <uwm/bitmaps/minimize_icon>
-
-struct Icon {
-    Pixmap active;
-    Pixmap inactive;
-    Pixmap current;
-};
-
-typedef struct Icon Icon;
-
 struct Frame {
     Window window;
     Window child;
-    struct Icon close_icon;
-    struct Icon maximize_icon;
-    struct Icon minimize_icon;
     XftDraw* draw;
     Bool wm_delete_window;
     char title[64];
     int width_inc;
     int height_inc;
+    GC line_gc;
+    GC focused_gc;
+    GC unfocused_gc;
+    enum {
+        FOCUS_NONE,
+        FOCUS_MINIMIZE,
+        FOCUS_MAXIMIZE,
+        FOCUS_CLOSE
+    } status;
 };
 
 typedef struct Frame Frame;
@@ -332,6 +326,7 @@ __XConfigureWindow__(const char* filename, int lineno, WindowManager* wm, Displa
 #define XXConfigureWindow(wm, a, b, c, d) \
     __XConfigureWindow__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
 
+#if 0
 static int
 __XCopyArea__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable src, Drawable dest, GC gc, int src_x, int src_y, unsigned int width, unsigned int height, int dest_x, int dest_y)
 {
@@ -341,6 +336,7 @@ __XCopyArea__(const char* filename, int lineno, WindowManager* wm, Display* disp
 
 #define XXCopyArea(wm, a, b, c, d, e, f, g, h, i, j) \
     __XCopyArea__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g), (h), (i), (j))
+#endif
 
 static Cursor
 __XCreateFontCursor__(const char* filename, int lineno, WindowManager* wm, Display* display, unsigned int shape)
@@ -362,6 +358,7 @@ __XCreateGC__(const char* filename, int lineno, WindowManager* wm, Display* disp
 #define XXCreateGC(wm, a, b, c, d) \
     __XCreateGC__(__FILE__, __LINE__, (wm), (a), (b), (c), (d))
 
+#if 0
 static Pixmap
 __XCreatePixmapFromBitmapData__(const char* filename, int lineno, WindowManager* wm, Display* display, Drawable d, char* data, unsigned int width, unsigned int height, unsigned long fg, unsigned long bg, unsigned int depth)
 {
@@ -371,6 +368,7 @@ __XCreatePixmapFromBitmapData__(const char* filename, int lineno, WindowManager*
 
 #define XXCreatePixmapFromBitmapData(wm, a, b, c, d, e, f, g, h) \
     __XCreatePixmapFromBitmapData__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g), (h))
+#endif
 
 static Window
 __XCreateSimpleWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int border_width, unsigned long border, unsigned long background)
@@ -424,6 +422,7 @@ __XFillRectangle__(const char* filename, int lineno, WindowManager* wm, Display*
 #define XXFillRectangle(wm, a, b, c, d, e, f, g) \
     __XFillRectangle__(__FILE__, __LINE__, (wm), (a), (b), (c), (d), (e), (f), (g))
 
+#if 0
 static int
 __XFreePixmap__(const char* filename, int lineno, WindowManager* wm, Display* display, Pixmap pixmap)
 {
@@ -433,6 +432,7 @@ __XFreePixmap__(const char* filename, int lineno, WindowManager* wm, Display* di
 
 #define XXFreePixmap(wm, a, b) \
     __XFreePixmap__(__FILE__, __LINE__, (wm), (a), (b))
+#endif
 
 static int
 __XFree__(const char* filename, int lineno, WindowManager* wm, void* data)
@@ -710,48 +710,28 @@ __XftFontOpenName__(const char* filename, int lineno, WindowManager* wm, Display
 #define XXftFontOpenName(wm, a, b, c) \
     __XftFontOpenName__(__FILE__, __LINE__, (wm), (a), (b), (c))
 
-static int
-compute_close_icon_x(WindowManager* wm, Window w)
-{
-    XWindowAttributes wa;
-    XXGetWindowAttributes(wm, wm->display, w, &wa);
-    return wa.width - wm->frame_size - close_icon_width;
-}
-
-static int
-compute_maximize_icon_x(WindowManager* wm, Window w)
-{
-    return compute_close_icon_x(wm, w) - maximize_icon_width;
-}
-
-static int
-compute_minimize_icon_x(WindowManager* wm, Window w)
-{
-    return compute_maximize_icon_x(wm, w) - minimize_icon_width;
-}
-
 static void
-draw_icon(WindowManager* wm, Window w, Pixmap icon, int x, int width, int height)
+draw_box(WindowManager* wm, Frame* frame, int width, int height, int n, int status)
 {
     Display* display = wm->display;
-    XXCopyArea(
-        wm,
-        display,
-        icon,
-        w,
-        DefaultGC(display, DefaultScreen(display)),
-        0, 0,
-        width, height,
-        x, wm->frame_size);
+    Window w = frame->window;
+
+    int size = wm->title_height;
+    int frame_size = wm->frame_size;
+    int x = width - frame_size - n * size;
+    int y = frame_size;
+    GC unfocused_gc = frame->unfocused_gc;
+    GC fill_gc = frame->status == status ? frame->focused_gc : unfocused_gc;
+    XXFillRectangle(wm, display, w, fill_gc, x, y, size, size);
+    XXDrawRectangle(wm, display, w, frame->line_gc, x, y, size, size);
 }
 
 static void
-draw_icons(WindowManager* wm, Frame* frame)
+draw_boxes(WindowManager* wm, Frame* frame, int width, int height)
 {
-    Window w = frame->window;
-    draw_icon(wm, w, frame->close_icon.current, compute_close_icon_x(wm, w), close_icon_width, close_icon_height);
-    draw_icon(wm, w, frame->maximize_icon.current, compute_maximize_icon_x(wm, w), maximize_icon_width, maximize_icon_height);
-    draw_icon(wm, w, frame->minimize_icon.current, compute_minimize_icon_x(wm, w), minimize_icon_width, minimize_icon_height);
+    draw_box(wm, frame, width, height, 1, FOCUS_CLOSE);
+    draw_box(wm, frame, width, height, 2, FOCUS_MAXIMIZE);
+    draw_box(wm, frame, width, height, 3, FOCUS_MINIMIZE);
 }
 
 static Atom
@@ -825,11 +805,8 @@ get_geometry(WindowManager* wm, Window w, unsigned int* width, unsigned int* hei
 }
 
 static void
-draw_corner(WindowManager* wm, Window w)
+draw_corner(WindowManager* wm, Window w, int width, int height)
 {
-    unsigned int width;
-    unsigned int height;
-    get_geometry(wm, w, &width, &height);
     Display* display = wm->display;
     GC gc = DefaultGC(display, DefaultScreen(display));
     int frame_size = wm->frame_size;
@@ -862,9 +839,13 @@ draw_frame(WindowManager* wm, Window w)
     if (frame == NULL) {
         return;
     }
+    unsigned int width;
+    unsigned int height;
+    get_geometry(wm, frame->window, &width, &height);
+
     draw_title_text(wm, frame);
-    draw_icons(wm, frame);
-    draw_corner(wm, w);
+    draw_boxes(wm, frame, width, height);
+    draw_corner(wm, w, width, height);
 }
 
 static void
@@ -939,27 +920,12 @@ create_draw(WindowManager* wm, Window w)
     return XXftDrawCreate(wm, display, w, visual, colormap);
 }
 
-static Pixmap
-create_icon(WindowManager* wm, Window w, unsigned char* bits, int width, int height, int pixel)
+static GC
+create_foreground_gc(WindowManager* wm, Window w, int pixel)
 {
-    Display* display = wm->display;
-    int screen = DefaultScreen(display);
-    return XXCreatePixmapFromBitmapData(
-        wm,
-        display,
-        w,
-        (char*)bits,
-        width, height,
-        BlackPixel(display, screen), pixel,
-        DefaultDepth(display, screen));
-}
-
-static void
-setup_icon(WindowManager* wm, Window window, unsigned char* bits, int width, int height, Icon* icon)
-{
-    icon->active = create_icon(wm, window, bits, width, height, wm->focused_foreground_color);
-    icon->inactive = create_icon(wm, window, bits, width, height, wm->unfocused_foreground_color);
-    icon->current = icon->inactive;
+    XGCValues v;
+    v.foreground = pixel;
+    return XXCreateGC(wm, wm->display, w, GCForeground, &v);
 }
 
 static Frame*
@@ -969,24 +935,28 @@ create_frame(WindowManager* wm, int x, int y, int child_width, int child_height)
     int width = child_width + compute_frame_width(wm);
     int height = child_height + compute_frame_height(wm);
     int focused_color = wm->focused_foreground_color;
+    int black = BlackPixel(display, DefaultScreen(display));
     Window w = XXCreateSimpleWindow(
         wm,
         display, DefaultRootWindow(display),
         x, y,
         width, height,
         wm->border_size,
-        BlackPixel(display, DefaultScreen(display)), focused_color);
+        black, focused_color);
     change_frame_event_mask(wm, w);
 
     Frame* frame = alloc_frame();
     frame->window = w;
-    setup_icon(wm, w, close_icon_bits, close_icon_width, close_icon_height, &frame->close_icon);
-    setup_icon(wm, w, maximize_icon_bits, maximize_icon_width, maximize_icon_height, &frame->maximize_icon);
-    setup_icon(wm, w, minimize_icon_bits, minimize_icon_width, minimize_icon_height, &frame->minimize_icon);
     frame->draw = create_draw(wm, w);
     assert(frame->draw != NULL);
     frame->wm_delete_window = False;
     frame->width_inc = frame->height_inc = 1;
+
+    frame->line_gc = create_foreground_gc(wm, w, black);
+    frame->focused_gc = create_foreground_gc(wm, w, focused_color);
+    int color = wm->unfocused_foreground_color;
+    frame->unfocused_gc = create_foreground_gc(wm, w, color);
+    frame->status = FOCUS_NONE;
 
     insert_frame(wm, frame);
 
@@ -1154,13 +1124,15 @@ alloc_color(WindowManager* wm, const char* name)
     return c.pixel;
 }
 
-static void
-free_icon(WindowManager* wm, Icon* icon)
+static int
+__XFreeGC__(const char* filename, int lineno, WindowManager* wm, Display* display, GC gc)
 {
-    Display* display = wm->display;
-    XXFreePixmap(wm, display, icon->active);
-    XXFreePixmap(wm, display, icon->inactive);
+    LOG_X0(filename, lineno, wm, "XFreeGC(display, gc)");
+    return XFreeGC(display, gc);
 }
+
+#define XXFreeGC(wm, display, gc) \
+    __XFreeGC__(__FILE__, __LINE__, (wm), (display), (gc))
 
 static void
 free_frame(WindowManager* wm, Frame* frame)
@@ -1169,9 +1141,11 @@ free_frame(WindowManager* wm, Frame* frame)
     remove_from_array(&wm->frames_z_order, frame);
 
     XXftDrawDestroy(wm, frame->draw);
-    free_icon(wm, &frame->close_icon);
-    free_icon(wm, &frame->maximize_icon);
-    free_icon(wm, &frame->minimize_icon);
+
+    Display* display = wm->display;
+    XXFreeGC(wm, display, frame->line_gc);
+    XXFreeGC(wm, display, frame->focused_gc);
+    XXFreeGC(wm, display, frame->unfocused_gc);
 
     memset(frame, 0xfd, sizeof(*frame));
     free(frame);
@@ -1347,39 +1321,6 @@ detect_frame_position(WindowManager* wm, Window w, int x, int y)
     return GP_NONE;
 }
 
-static Bool
-is_on_minimize_icon(WindowManager* wm, Window w, int x, int y)
-{
-    int frame_size = wm->frame_size;
-    int icon_x = compute_minimize_icon_x(wm, w);
-    int icon_y = wm->border_size + frame_size;
-    int width = close_icon_width;
-    int height = close_icon_height;
-    return is_region_inside(icon_x, icon_y, width, height, x, y);
-}
-
-static Bool
-is_on_maximize_icon(WindowManager* wm, Window w, int x, int y)
-{
-    int frame_size = wm->frame_size;
-    int icon_x = compute_maximize_icon_x(wm, w);
-    int icon_y = wm->border_size + frame_size;
-    int width = close_icon_width;
-    int height = close_icon_height;
-    return is_region_inside(icon_x, icon_y, width, height, x, y);
-}
-
-static Bool
-is_on_close_icon(WindowManager* wm, Window w, int x, int y)
-{
-    int frame_size = wm->frame_size;
-    int icon_x = compute_close_icon_x(wm, w);
-    int icon_y = wm->border_size + frame_size;
-    int width = close_icon_width;
-    int height = close_icon_height;
-    return is_region_inside(icon_x, icon_y, width, height, x, y);
-}
-
 static void
 close_frame(WindowManager* wm, Frame* frame)
 {
@@ -1453,18 +1394,18 @@ process_button_press(WindowManager* wm, XButtonEvent* e)
     if (frame == NULL) {
         return;
     }
-    int x = e->x;
-    int y = e->y;
-    if (is_on_close_icon(wm, w, x, y)) {
+    if (frame->status == FOCUS_CLOSE) {
         close_frame(wm, frame);
         return;
     }
-    if (is_on_minimize_icon(wm, w, x, y)) {
+    if (frame->status == FOCUS_MINIMIZE) {
         unmap_frame(wm, frame);
         return;
     }
     XXRaiseWindow(wm, display, w);
     focus(wm, frame);
+    int x = e->x;
+    int y = e->y;
     grasp_frame(wm, detect_frame_position(wm, w, x, y), w, x, y);
 }
 
@@ -1540,72 +1481,6 @@ highlight_selected_popup_item(WindowManager* wm, int x, int y)
     expose(wm, wm->popup_menu.window);
 }
 
-static Pixmap
-select_minimize_icon(WindowManager* wm, Frame* frame, int x, int y)
-{
-    if (is_on_minimize_icon(wm, frame->window, x, y)) {
-        return frame->minimize_icon.active;
-    }
-    return frame->minimize_icon.inactive;
-}
-
-static Pixmap
-select_maximize_icon(WindowManager* wm, Frame* frame, int x, int y)
-{
-    if (is_on_maximize_icon(wm, frame->window, x, y)) {
-        return frame->maximize_icon.active;
-    }
-    return frame->maximize_icon.inactive;
-}
-
-static Pixmap
-select_close_icon(WindowManager* wm, Frame* frame, int x, int y)
-{
-    if (is_on_close_icon(wm, frame->window, x, y)) {
-        return frame->close_icon.active;
-    }
-    return frame->close_icon.inactive;
-}
-
-static void
-change_minimize_icon(WindowManager* wm, Window w, int x, int y)
-{
-    Frame* frame = search_frame(wm, w);
-    assert(frame != NULL);
-    Pixmap icon = select_minimize_icon(wm, frame, x, y);
-    if (icon == frame->minimize_icon.current) {
-        return;
-    }
-    frame->minimize_icon.current = icon;
-    expose(wm, w);
-}
-
-static void
-change_maximize_icon(WindowManager* wm, Window w, int x, int y)
-{
-    Frame* frame = search_frame(wm, w);
-    assert(frame != NULL);
-    Pixmap icon = select_maximize_icon(wm, frame, x, y);
-    if (icon == frame->maximize_icon.current) {
-        return;
-    }
-    frame->maximize_icon.current = icon;
-    expose(wm, w);
-}
-
-static void
-change_close_icon(WindowManager* wm, Window w, int x, int y)
-{
-    Frame* frame = search_frame(wm, w);
-    assert(frame != NULL);
-    Pixmap icon = select_close_icon(wm, frame, x, y);
-    if (icon == frame->close_icon.current) {
-        return;
-    }
-    frame->close_icon.current = icon;
-    expose(wm, w);
-}
-
 static void
 change_cursor(WindowManager* wm, Window w, int x, int y)
 {
@@ -1653,6 +1528,45 @@ floor_int(int n, int inc)
 }
 
 static void
+update_frame_status(WindowManager* wm, Frame* frame, int status)
+{
+    if (frame->status == status) {
+        return;
+    }
+    frame->status = status;
+    expose(wm, frame->window);
+}
+
+static int
+detect_frame_status(WindowManager* wm, Frame* frame, int x, int y)
+{
+    int frame_size = wm->frame_size;
+    int size = wm->title_height;
+    if ((y < frame_size) || (frame_size + size < y)) {
+        return FOCUS_NONE;
+    }
+    unsigned int width;
+    unsigned int height;
+    get_geometry(wm, frame->window, &width, &height);
+    if (x < width - (3 * size + frame_size)) {
+        return FOCUS_NONE;
+    }
+    if (x < width - (2 * size + frame_size)) {
+        return FOCUS_MINIMIZE;
+    }
+    if (x < width - (size + frame_size)) {
+        return FOCUS_MAXIMIZE;
+    }
+    return FOCUS_CLOSE;
+}
+
+static void
+change_frame_status(WindowManager* wm, Frame* frame, int x, int y)
+{
+    update_frame_status(wm, frame, detect_frame_status(wm, frame, x, y));
+}
+
+static void
 process_motion_notify(WindowManager* wm, XMotionEvent* e)
 {
     LOG(wm, "process_motion_notify: window=0x%08x, root=0x%08x, subwindow=0x%08x", e->window, e->root, e->subwindow);
@@ -1670,9 +1584,7 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     }
     if ((e->state & Button1Mask) == 0) {
         change_cursor(wm, w, x, y);
-        change_close_icon(wm, w, x, y);
-        change_maximize_icon(wm, w, x, y);
-        change_minimize_icon(wm, w, x, y);
+        change_frame_status(wm, frame, x, y);
         return;
     }
 
@@ -2415,14 +2327,6 @@ setup_cursors(WindowManager* wm)
     CREATE_CURSOR(top_right_cursor, XC_top_right_corner);
     CREATE_CURSOR(top_cursor, XC_top_side);
 #undef CREATE_CURSOR
-}
-
-static GC
-create_foreground_gc(WindowManager* wm, Window w, int pixel)
-{
-    XGCValues v;
-    v.foreground = pixel;
-    return XXCreateGC(wm, wm->display, w, GCForeground, &v);
 }
 
 static void
