@@ -5,8 +5,8 @@ type: :bugfix
 component: core
 release: 0.1.0
 reporter: Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
-status: :unstarted
-disposition: 
+status: :closed
+disposition: :wontfix
 creation_time: 2011-12-12 16:13:41.062624 Z
 references: []
 
@@ -16,3 +16,7 @@ log_events:
   - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
   - created
   - ""
+- - 2012-08-23 16:26:00.117366 Z
+  - Tomohiko Sumi <SumiTomohiko@neko-daisuki.ddo.jp>
+  - closed with disposition wontfix
+  - I cannot reproduce this bug.
