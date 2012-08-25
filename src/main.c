@@ -1739,7 +1739,7 @@ draw_clock(WindowManager* wm)
 }
 
 static void
-fill_top_frame_rect(WindowManager* wm, Frame* frame, int x, int y, int width, int height)
+fill_top_frame_rect(WindowManager* wm, Frame* frame, int x, int width, int height)
 {
     if (wm->frames_z_order.size == 0) {
         return;
@@ -1749,29 +1749,45 @@ fill_top_frame_rect(WindowManager* wm, Frame* frame, int x, int y, int width, in
     }
     Window w = wm->taskbar.window;
     GC gc = wm->taskbar.focused_gc;
-    XXFillRectangle(wm, wm->display, w, gc, x, y, width, height);
+    XXFillRectangle(wm, wm->display, w, gc, x, 0, width, height);
 }
 
 static void
-draw_list_rect(WindowManager* wm, Frame* frame, int x, int y, int width, int height)
+draw_vertical_line(WindowManager* wm, Drawable d, GC gc, int x, int y0, int y1)
 {
-    fill_top_frame_rect(wm, frame, x, y, width, height);
+    XXDrawLine(wm, wm->display, d, gc, x, y0, x, y1);
+}
+
+static void
+draw_list_rect(WindowManager* wm, Frame* frame, int x, int width, int height)
+{
+    fill_top_frame_rect(wm, frame, x, width, height);
 
     Window w = wm->taskbar.window;
     GC gc = wm->taskbar.line_gc;
-    XXDrawRectangle(wm, wm->display, w, gc, x, y, width, height);
+    int y0 = 0;
+    int y1 = height;
+    draw_vertical_line(wm, w, gc, x, y0, y1);
+    draw_vertical_line(wm, w, gc, x + width, y0, y1);
 }
 
 static void
-draw_list_entry(WindowManager* wm, Frame* frame, int x, int y, int width, int height)
+draw_list_entry(WindowManager* wm, Frame* frame, int x, int width, int height)
 {
-    draw_list_rect(wm, frame, x, y, width, height);
+    draw_list_rect(wm, frame, x, width, height);
 
-    XXftDrawStringUtf8(wm, wm->taskbar.draw, &wm->title_color, wm->title_font, x, y + height, (XftChar8*)frame->title, strlen(frame->title));
+    XftDraw* d = wm->taskbar.draw;
+    XftColor* color = &wm->title_color;
+    XftFont* font = wm->title_font;
+    int padding_size = wm->padding_size;
+    int pos = x + padding_size;
+    int y = padding_size + wm->title_font->ascent;
+    XftChar8* pstr = (XftChar8*)frame->title;
+    XXftDrawStringUtf8(wm, d, color, font, pos, y, pstr, strlen(frame->title));
 }
 
 static void
-draw_window_list(WindowManager* wm, int width)
+draw_window_list(WindowManager* wm, int list_width)
 {
     Window w = wm->taskbar.window;
     unsigned int _;
@@ -1782,15 +1798,12 @@ draw_window_list(WindowManager* wm, int width)
     if (nframes == 0) {
         return;
     }
-    int item_width = width / nframes;
-    int padding_size = wm->padding_size;
+    int item_width = list_width / nframes;
     int i;
     for (i = 0; i < nframes; i++) {
-        int x = item_width * i + padding_size;
-        int y = padding_size;
-        int width = item_width - padding_size;
-        int height = taskbar_height - 2 * padding_size;
-        draw_list_entry(wm, wm->all_frames.items[i], x, y, width, height);
+        Frame* frame = wm->all_frames.items[i];
+        int x = item_width * i;
+        draw_list_entry(wm, frame, x, item_width, taskbar_height);
     }
 }
 
