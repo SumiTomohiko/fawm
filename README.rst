@@ -21,6 +21,13 @@ Install
 
   $ ./configure && make
 
+How to Use
+==========
+
+Write in your ``~/.xinitrc``::
+
+  exec fawm
+
 Author
 ======
 
