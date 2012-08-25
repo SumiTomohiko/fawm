@@ -1347,13 +1347,25 @@ focus_window_of_taskbar(WindowManager* wm, int x, int y)
     if (wm->taskbar.clock_x < x) {
         return;
     }
+    Display* display = wm->display;
+    unsigned int _;
+    unsigned int taskbar_height;
+    get_geometry(wm, wm->taskbar.window, &_, &taskbar_height);
+    unsigned int root_height;
+    get_geometry(wm, DefaultRootWindow(display), &_, &root_height);
+    if (x < taskbar_height) {
+        map_popup_menu(wm, 0, root_height - taskbar_height);
+        return;
+    }
+
     int nframes = wm->all_frames.size;
     if (nframes == 0) {
         return;
     }
     Frame* frame = wm->all_frames.items[x / (wm->taskbar.clock_x / nframes)];
-    XXMapWindow(wm, wm->display, frame->window);
-    XXRaiseWindow(wm, wm->display, frame->window);
+    Window w = frame->window;
+    XXMapWindow(wm, display, w);
+    XXRaiseWindow(wm, display, w);
     focus(wm, frame);
 }
 
@@ -1572,16 +1584,17 @@ process_motion_notify(WindowManager* wm, XMotionEvent* e)
     LOG(wm, "process_motion_notify: window=0x%08x, root=0x%08x, subwindow=0x%08x", e->window, e->root, e->subwindow);
     Display* display = wm->display;
     Window w = e->window;
-    int x = e->x;
-    int y = e->y;
-    if (w == DefaultRootWindow(display)) {
-        highlight_selected_popup_item(wm, x, y);
+    Window root = DefaultRootWindow(display);
+    if ((w == root) || (w == wm->taskbar.window)) {
+        highlight_selected_popup_item(wm, e->x_root, e->y_root);
         return;
     }
     Frame* frame = search_frame(wm, w);
     if (frame == NULL) {
         return;
     }
+    int x = e->x;
+    int y = e->y;
     if ((e->state & Button1Mask) == 0) {
         change_cursor(wm, w, x, y);
         change_frame_status(wm, frame, x, y);
@@ -1787,7 +1800,7 @@ draw_list_entry(WindowManager* wm, Frame* frame, int x, int width, int height)
 }
 
 static void
-draw_window_list(WindowManager* wm, int list_width)
+draw_window_list(WindowManager* wm, int list_right_x)
 {
     Window w = wm->taskbar.window;
     unsigned int _;
@@ -1798,11 +1811,11 @@ draw_window_list(WindowManager* wm, int list_width)
     if (nframes == 0) {
         return;
     }
-    int item_width = list_width / nframes;
+    int item_width = (list_right_x - taskbar_height) / nframes;
     int i;
     for (i = 0; i < nframes; i++) {
         Frame* frame = wm->all_frames.items[i];
-        int x = item_width * i;
+        int x = taskbar_height + item_width * i;
         draw_list_entry(wm, frame, x, item_width, taskbar_height);
     }
 }
@@ -1882,12 +1895,13 @@ static void
 process_button_release(WindowManager* wm, XButtonEvent* e)
 {
     LOG(wm, "process_button_release: window=0x%08x, root=0x%08x, subwindow=0x%08x", e->window, e->root, e->subwindow);
-    if (e->window != DefaultRootWindow(wm->display)) {
+    Frame* frame = search_frame(wm, e->window);
+    if (frame != NULL) {
         release_frame(wm);
         return;
     }
     unmap_popup_menu(wm);
-    int index = detect_selected_popup_item(wm, e->x, e->y);
+    int index = detect_selected_popup_item(wm, e->x_root, e->y_root);
     if (index < 0) {
         return;
     }
@@ -2226,7 +2240,12 @@ change_event_mask(WindowManager* wm, Window w, long event_mask)
 static void
 change_taskbar_event_mask(WindowManager* wm, Window w)
 {
-    change_event_mask(wm, w, ButtonPressMask | ExposureMask);
+    long mask = 0
+        | Button1MotionMask
+        | ButtonPressMask
+        | ButtonReleaseMask
+        | ExposureMask;
+    change_event_mask(wm, w, mask);
 }
 
 static void
