@@ -2,7 +2,7 @@
 def build(ctx):
     ctx.program(
             source="main.c",
-            target="uwm",
+            target="fawm",
             cflags=["-O3", "-Wall", "-Werror", "-g"],
             includes=["../include", "/usr/local/include/freetype2"],
             lib=["X11", "Xft"])

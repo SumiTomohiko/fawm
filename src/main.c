@@ -2486,7 +2486,7 @@ log_error(FILE* fp, const char* fmt, ...)
 static int
 error_handler(Display* display, XErrorEvent* e)
 {
-    FILE* fp = fopen("uwm-error.log", "a");
+    FILE* fp = fopen("fawm-error.log", "a");
     assert(fp != NULL);
     log_error(fp, "**********");
     log_error(fp, "X Error at pid %u", getpid());
