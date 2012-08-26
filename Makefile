@@ -1,16 +1,16 @@
 
-WAF = ./waf -v
+BUILD_CMD = ./blow
 
 all: build
 
 install:
-	@$(WAF) install
+	@$(BUILD_CMD) install
 
 clean:
-	@$(WAF) clean
+	@$(BUILD_CMD) clean
 
 build:
-	@$(WAF) build
+	@$(BUILD_CMD) build
 
 .PHONY: build
 

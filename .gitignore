@@ -2,7 +2,7 @@
 *.log
 .ditz-config
 .gdb_history
-.lock-waf_*
-.waf*
-build
+.tissue
 core
+src/fawm
+src/main.o
