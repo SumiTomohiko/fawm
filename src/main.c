@@ -2552,7 +2552,9 @@ wm_main(WindowManager* wm, Display* display, const char* log_file, int argc, cha
         process_event(wm, &e);
     }
 
-    fclose(wm->log_file);
+    if (wm->log_file != NULL) {
+        fclose(wm->log_file);
+    }
 }
 
 int
