@@ -17,7 +17,8 @@ Features
 Install
 =======
 
-::
+fawm needs Python 3.x to compile. You will get ``src/fawm`` with the following
+command::
 
   $ ./configure && make
 
