@@ -14,6 +14,12 @@ Features
 * MIT Lisence
 * (fawm is not a tiling window manager)
 
+Requirements
+============
+
+* FreeBSD 9.0/amd64
+* FreeBSD 9.0/i386
+
 Install
 =======
 
@@ -25,9 +31,34 @@ command::
 How to Use
 ==========
 
+.xinitrc
+--------
+
 Write in your ``~/.xinitrc``::
 
   exec fawm
+
+Popup Menu
+----------
+
+Clicking the root window show you the popup menu. It has three items (Firefox,
+mlterm and exit).
+
+The popup menu appears by clicking the most left box of the taskbar.
+
+Wallpaper
+---------
+
+fawm cannot set a wallpaper. Please use ``xloadimage -onroot``.
+
+Known Bugs
+==========
+
+* Close/maximize/minimize buttons have no image. They are only three dark boxes.
+* Maximize button does not work.
+* Users cannot customize the popup menu at any configuration files (changing
+  source and recompiling are needed).
+* Almost no documentations.
 
 Author
 ======
