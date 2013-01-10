@@ -574,7 +574,7 @@ __XRaiseWindow__(const char* filename, int lineno, WindowManager* wm, Display* d
 static int
 __XReparentWindow__(const char* filename, int lineno, WindowManager* wm, Display* display, Window w, Window parent,  int x, int y)
 {
-    LOG_X(filename, lineno, wm, "XReparentWindow(display, w=0x%08x, parent=0x%08x, x=%d, y=%d)", x, parent, x, y);
+    LOG_X(filename, lineno, wm, "XReparentWindow(display, w=0x%08x, parent=0x%08x, x=%d, y=%d)", w, parent, x, y);
     return XReparentWindow(display, w, parent, x, y);
 }
 
