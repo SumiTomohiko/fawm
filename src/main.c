@@ -1061,8 +1061,9 @@ reparent_window(WindowManager* wm, Window w)
     int y = 2 * frame_size + wm->title_height;
     XXSetWindowBorderWidth(wm, display, w, wm->client_border_size);
     Window parent = frame->window;
-    LOG(wm, "Reparented: frame=0x%08x, child=0x%08x", parent, w);
+    LOG(wm, "Reparenting: frame=0x%08x, child=0x%08x", parent, w);
     XXReparentWindow(wm, display, w, parent, x, y);
+
     get_normal_hints(wm, frame);
     read_protocols(wm, frame);
 
