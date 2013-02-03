@@ -17,8 +17,7 @@ Features
 Requirements
 ============
 
-* FreeBSD 9.0/amd64
-* FreeBSD 9.0/i386
+* FreeBSD 9.1/amd64
 
 Install
 =======
