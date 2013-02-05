@@ -2082,11 +2082,10 @@ static void
 process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
 {
     LOG(wm, "process_configure_request: parent=0x%08x, window=0x%08x, above=0x%08x", e->parent, e->window, e->above);
-    Window parent = e->parent;
-    Frame* frame = search_frame(wm, parent);
     Window w = e->window;
+    Frame* frame = search_frame_of_child(wm, w);
     if (frame != NULL) {
-        configure_frame(wm, parent, w, e);
+        configure_frame(wm, e->parent, w, e);
         return;
     }
 
