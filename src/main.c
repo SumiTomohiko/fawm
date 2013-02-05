@@ -1728,10 +1728,13 @@ compute_text_width(WindowManager* wm, XftFont* font, const char* text, int len)
 static void
 draw_clock(WindowManager* wm)
 {
-    time_t now;
-    time(&now);
+    struct timeval tv;
+    if (gettimeofday(&tv, NULL) != 0) {
+        print_error("gettimeofday failed: %s", strerror(errno));
+        return;
+    }
     struct tm tm;
-    localtime_r(&now, &tm);
+    localtime_r(&tv.tv_sec, &tm);
     char text[64];
     strftime(text, array_sizeof(text), "%Y-%m-%dT%H:%M", &tm);
 
