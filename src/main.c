@@ -2095,22 +2095,22 @@ process_configure_request(WindowManager* wm, XConfigureRequestEvent* e)
     if (value_mask & CWX) {
         XWindowChanges changes;
         changes.x = e->x;
-        XXConfigureWindow(wm, display, parent, CWX, &changes);
+        XXConfigureWindow(wm, display, w, CWX, &changes);
     }
     if (value_mask & CWY) {
         XWindowChanges changes;
         changes.y = e->y;
-        XXConfigureWindow(wm, display, parent, CWY, &changes);
+        XXConfigureWindow(wm, display, w, CWY, &changes);
     }
     if (value_mask & CWWidth) {
         XWindowChanges changes;
         changes.width = e->width;
-        XXConfigureWindow(wm, display, parent, CWWidth, &changes);
+        XXConfigureWindow(wm, display, w, CWWidth, &changes);
     }
     if (value_mask & CWHeight) {
         XWindowChanges changes;
         changes.height = e->height;
-        XXConfigureWindow(wm, display, parent, CWHeight, &changes);
+        XXConfigureWindow(wm, display, w, CWHeight, &changes);
     }
     if (value_mask & CWBorderWidth) {
         XWindowChanges changes;
