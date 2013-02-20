@@ -3,6 +3,8 @@
 .ditz-config
 .gdb_history
 .tissue
+__fawm_config__/__fawm_config__
+__fawm_config__/main.o
 core
-src/fawm
-src/main.o
+fawm/fawm
+fawm/main.o

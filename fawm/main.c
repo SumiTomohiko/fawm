@@ -19,6 +19,8 @@
 #include <X11/Xft/Xft.h>
 #include <X11/cursorfont.h>
 
+#include <fawm/private.h>
+
 struct Frame {
     Window window;
     Window child;
