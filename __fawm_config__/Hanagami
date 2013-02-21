@@ -1,9 +1,26 @@
 
-def build():
+def define_executable_rule():
     target = "__fawm_config__"
-    sources = "main.c"
+    sources = ["main.c", "lex.yy.c", "y.tab.c"]
     cflags = ["-Wall", "-Werror", "-O3", "-g"]
     includes = ["{top_dir}/include", "/usr/local/include"]
     program(**locals())
+
+def define_lexer_rule():
+    targets = "lex.yy.c"
+    sources = "conf.l"
+    commands = "lex {sources}"
+    command(**locals())
+
+def define_parser_rule():
+    targets = ["y.tab.c", "y.tab.h"]
+    sources = "conf.y"
+    commands = "yacc -dv {sources}"
+    command(**locals())
+
+def build():
+    define_executable_rule()
+    define_parser_rule()
+    define_lexer_rule()
 
 # vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=python
