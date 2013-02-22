@@ -1,7 +1,7 @@
 
 def define_executable_rule():
     target = "__fawm_config__"
-    sources = ["main.c", "lex.yy.c", "y.tab.c"]
+    sources = ["main.c", "memory.c", "lex.yy.c", "y.tab.c"]
     cflags = ["-Wall", "-Werror", "-O3", "-g"]
     includes = ["{top_dir}/include", "/usr/local/include"]
     program(**locals())

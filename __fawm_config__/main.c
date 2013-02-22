@@ -1,8 +1,11 @@
 #include <fawm/private.h>
+#include <fawm/private/__fawm_config__.h>
 
 int
 main(int argc, const char* argv[])
 {
+    memory_initialize();
+
     return 0;
 }
 
