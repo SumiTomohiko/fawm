@@ -5,11 +5,13 @@
 .tissue
 __fawm_config__/__fawm_config__
 __fawm_config__/lex.yy.c
+__fawm_config__/lex.yy.o
 __fawm_config__/main.o
 __fawm_config__/memory.o
 __fawm_config__/y.output
 __fawm_config__/y.tab.c
 __fawm_config__/y.tab.h
+__fawm_config__/y.tab.o
 core
 fawm/fawm
 fawm/main.o

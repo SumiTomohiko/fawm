@@ -1,4 +1,19 @@
 %{
+#include <stdio.h>
+
+/**
+ * If the declaration of yylex() does not exit, clang warns "implicait
+ * declaration". yacc does not have any options to declare it. I dislike to add
+ * this manually.
+ */
+extern int yylex();
+
+static int
+yyerror(const char* msg)
+{
+    fprintf(stderr, "parser error: %s\n", msg);
+    return 0;   /* No one use this value? */
+}
 %}
 %token T_END T_EXEC T_EXIT T_MENU T_NEWLINE T_STRING
 %%

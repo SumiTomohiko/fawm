@@ -1,5 +1,11 @@
 %{
 #include "y.tab.h"
+
+static int
+yywrap()
+{
+    return 1;
+}
 %}
 %%
 "end"   return T_END;

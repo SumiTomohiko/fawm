@@ -2,7 +2,9 @@
 def define_executable_rule():
     target = "__fawm_config__"
     sources = ["main.c", "memory.c", "lex.yy.c", "y.tab.c"]
-    cflags = ["-Wall", "-Werror", "-O3", "-g"]
+    # YY_NO_UNPUT orders lex.yy.c to exclude yyunput(), YY_NO_INPUT excludes
+    # input().
+    cflags = ["-Wall", "-Werror", "-O3", "-g", "-DYY_NO_UNPUT", "-DYY_NO_INPUT"]
     includes = ["{top_dir}/include", "/usr/local/include"]
     program(**locals())
 
