@@ -2,4 +2,14 @@
 def build():
     recurse("__fawm_config__", "fawm")
 
+install = build
+
+version = "1.0.0dev2"
+
+def configure(conf):
+    define_prefix("FAWM_")
+    define("PACKAGE_VERSION", version)
+    define("PREFIX", get_option("prefix", "/usr/local"))
+    make_config_h("include/fawm/config.h")
+
 # vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=python

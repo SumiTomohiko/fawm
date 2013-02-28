@@ -3,10 +3,12 @@
 from functools import partial
 from glob import glob
 from logging import FileHandler, Formatter, StreamHandler, getLogger
-from os import chdir, close, environ, getcwd, mkdir, stat, unlink, write
+from os import chdir, close, environ, getcwd, mkdir, stat, symlink, unlink, \
+        write
 from os.path import abspath, basename, dirname, exists, join, splitext
 from re import match
 from runpy import run_path
+from shutil import copy
 from subprocess import PIPE, Popen, call
 from sys import argv, exit, stdout
 from time import localtime, strftime
@@ -34,7 +36,7 @@ class Configure:
         self.libraries = []
         self.prefix = ""
         self.config_h_path = None
-        self.definitions = []
+        self.definitions = {}
         self.options = options
         self.subdirs = []
 
@@ -45,7 +47,7 @@ class Configure:
         return self.options.get(key, default)
 
     def define(self, key, value):
-        self.definitions.append((self.prefix + key, value))
+        self.definitions[self.prefix + key] = value
 
     def make_config_h(self, path):
         self.config_h_path = path
@@ -242,16 +244,17 @@ VAR_DIR = ".tissue"
 CONFIG_PY = join(VAR_DIR, "config.py")
 
 def output_conf(fp, key, value):
-    print("{key} = {value}".format(**locals()), file=fp)
+    print("{key} = {value}".format(key=key, value=repr(value)), file=fp)
 
 def output_environ(fp, environ, key, default):
-    output_conf(fp, key, repr(environ.get(key, default)))
+    output_conf(fp, key, environ.get(key, default))
 
 CONF_KEY = "conf"
 
-def make_config_py(conf):
+def make_config_py(prefix, conf):
     with open(CONFIG_PY, "w") as fp:
         output_environ(fp, environ, "CC", "clang")
+        output_conf(fp, "prefix", prefix)
         output_conf(fp, CONF_KEY, conf)
 
 def parse_options(args):
@@ -301,47 +304,102 @@ def configure(ctx):
         check_sizeof(prefix, config_h, sizeof)
     for library in conf.libraries:
         check_lib(prefix, config_h, library)
-    config_h += conf.definitions
+    config_h += conf.definitions.items()
     make_config_h(conf.config_h_path, config_h)
 
-    make_config_py(ctx.conf)
+    make_config_py(conf.definitions[prefix + "PREFIX"], ctx.conf)
 
 def change_ext(filename, ext):
     return splitext(filename)[0] + ext
 
+class File:
+
+    def __init__(self, name):
+        self.name = name
+        self.sources = []
+        self.additional_sources = []
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return "<File {name}>".format(**self.__dict__)
+
 class Task:
 
     def __init__(self):
-        self.dirpath = None
-        self.sources = None
         self.targets = None
         self.commands = None
         self.includes = None
-        self.additional_sources = []
+        self.additional_sources = None  # cache
+
+    def get_sources(self):
+        sources = []
+        for target in self.targets:
+            for source in target.sources:
+                if source in sources:
+                    continue
+                sources.append(source)
+        return sources
+
+    sources = property(get_sources)
 
     def __repr__(self):
-        fmt = "<Task dirpath={dirpath} targets={targets}>"
-        return fmt.format(**self.__dict__)
+        fmt = "<Task targets={targets}>"
+        return fmt.format(targets=chain_filenames(self.targets))
+
+class Install:
+
+    def __init__(self):
+        self.bin = []
+        self.subdirs = []
+
+    def recurse(self, *subdirs):
+        if (len(subdirs) == 1) and isinstance(subdirs[0], list):
+            return self.recurse(*subdirs[0])
+        self.subdirs += subdirs
+
+    def install_bin(self, target):
+        self.bin.append(target)
 
 class Build:
 
-    def __init__(self, dirpath, config):
+    def __init__(self, top_dir, dirpath, config):
+        self.top_dir = top_dir
         self.dirpath = dirpath
         self.config = config
         self.subdirs = []
         self.subdirs_to_make = []
         self.tasks = []
+        self.files = {}
 
-    def replace(self, a):
-        return [s.format(**self.config["conf"]) for s in a]
+    def replace(self, s):
+        return s.format(**self.config["conf"])
+
+    def find_or_make_file(self, name):
+        s = self.replace(name)
+        try:
+            return self.files[s]
+        except KeyError:
+            pass
+        f = File(s)
+        self.files[s] = f
+        return f
+
+    def find_or_make_files(self, a):
+        return [self.find_or_make_file(name) for name in a]
 
     def add_task(self, targets, sources, commands, includes=[]):
+        target_files = self.find_or_make_files(targets)
+        source_files = self.find_or_make_files(sources)
+        for target in target_files:
+            target.sources.extend(source_files)
+
         task = Task()
-        task.dirpath = self.dirpath
-        task.targets = self.replace(targets)
-        task.sources = self.replace(sources)
+        task.targets = target_files
         task.commands = commands
-        task.includes = self.replace(includes)
+        task.includes = [self.replace(dirpath) for dirpath in includes]
+
         self.tasks.append(task)
 
     def command(self, commands, targets, sources):
@@ -447,9 +505,9 @@ def mtime_of_file(path):
     except FileNotFoundError:
         return None
 
-def mtime_of_files(dirpath, names):
+def mtime_of_files(dirpath, files):
     l = []
-    for name in names:
+    for name in [f.name for f in files]:
         path = join(dirpath, name)
         mtime = mtime_of_file(path)
         if mtime is None:
@@ -463,8 +521,8 @@ def log_file_info(ctx, msg, t):
     tm = strftime("%Y-%m-%d %H:%M:%S", localtime(t[1]))
     ctx.log("{msg}: {path}, {tm}".format(**locals()))
 
-def is_up_to_date(ctx, task):
-    dirpath = task.dirpath
+def is_up_to_date(ctx, b, task):
+    dirpath = b.dirpath
     targets_mtime = mtime_of_files(dirpath, task.targets)
     if len(targets_mtime) != len(task.targets):
         return False
@@ -478,21 +536,19 @@ def is_up_to_date(ctx, task):
 
     return youngest_source[1] < oldest_target[1]
 
-def find_task(target, tasks):
-    for task in tasks:
-        if target in [join(task.dirpath, target) for target in task.targets]:
+def find_task(b, target):
+    for task in b.tasks:
+        if target in task.targets:
             return task
     return None
 
-def find_task_of_orphan_target(target, tasks, includes):
-    for path in [join(d, target) for d in includes]:
-        task = find_task(path, tasks)
-        if task is not None:
-            return task
+def find_target_of_included(b, path):
+    name = basename(path)
+    for task in b.tasks:
+        for target in task.targets:
+            if name == basename(target.name):
+                return target
     return None
-
-def join_filenames(dirpath, names):
-    return " ".join([join(dirpath, name) for name in names])
 
 def chdir_and_call(ctx, dirpath, command):
     cwd_old = getcwd()
@@ -509,38 +565,49 @@ def chdir_and_call(ctx, dirpath, command):
     finally:
         chdir(cwd_old)
 
-def resolve(ctx, top_dir, task, tasks):
+def get_all_additional_sources_of_task(task):
+    sources = []
+    for target in task.targets:
+        sources.extend(target.additional_sources)
+    return sources
+
+def chain_filenames(files):
+    return " ".join([f.name for f in files])
+
+def resolve_task(ctx, b, task):
     ctx.log("resolving: {task}".format(**locals()))
     for source in task.sources + task.additional_sources:
-        t = find_task(join(task.dirpath, source), tasks)
+        t = find_task(b, source)
         if t is None:
             continue
-        resolve(ctx, top_dir, t, tasks)
-    if is_up_to_date(ctx, task):
+        resolve_task(ctx, b, t)
+    if is_up_to_date(ctx, b, task):
         ctx.log("skip: {task}".format(**locals()))
         return
     ctx.log("Must update: {task}".format(**locals()))
-    dirpath = task.dirpath
+    dirpath = b.dirpath
     for template in task.commands or []:
         d = {
-                "targets": join_filenames(dirpath, task.targets),
-                "sources": join_filenames(dirpath, task.sources) }
+                "targets": chain_filenames(task.targets),
+                "sources": chain_filenames(task.sources) }
         d.update(ctx.conf)
-        chdir_and_call(ctx, task.dirpath, template.format(**d))
+        chdir_and_call(ctx, dirpath, template.format(**d))
+
+def is_root_target(tasks, target):
+    for task in tasks:
+        for t in task.targets:
+            if target in t.sources + t.additional_sources:
+                return False
+    return True
 
 def find_root_targets(tasks):
-    l = []
+    roots = []
     for task in tasks:
         for target in task.targets:
-            target_is_source = False
-            for t in tasks:
-                if target in t.sources:
-                    target_is_source = True
-                    break
-            if not target_is_source:
-                l.append(task)
+            if is_root_target(tasks, target):
+                roots.append(task)
                 break
-    return l
+    return roots
 
 def find_in_includes(path, includes):
     for include in includes:
@@ -549,55 +616,81 @@ def find_in_includes(path, includes):
             return fullpath
     return None
 
-def add_included_sources(tasks, top_dir):
-    for task in tasks:
-        for source in task.sources:
-            if splitext(source)[1] != ".c":
-                continue
-            try:
-                with open(join(task.dirpath, source)) as fp:
-                    for line in fp:
-                        regexp = r"#include [\"<](?P<path>.*)[\">]"
-                        m = match(regexp, line.strip())
-                        if m is None:
+def append_sources(sources, path):
+    if path in sources:
+        return
+    sources.append(path)
+
+def find_additional_sources(b, task, source):
+    if splitext(source.name)[1] not in (".c", ".h"):
+        return []
+    additional_sources = []
+    try:
+        with open(join(b.dirpath, source.name)) as fp:
+            for line in fp:
+                regexp = r"#include [\"<](?P<path>.*)[\">]"
+                m = match(regexp, line.strip())
+                if m is None:
+                    continue
+                path = m.group("path")
+
+                target = find_target_of_included(b, path)
+                if target is not None:
+                    additional_sources.append(target)
+                    continue
+
+                system_include_dirs = ["/usr/include", "/usr/local/include"]
+                fullpath = find_in_includes(path, system_include_dirs)
+                if fullpath is not None:
+                    # The header file is found in a system includedirectory.
+                    # Updating such file is rare, so it is ignored.
+                    continue
+
+                includes = [b.dirpath] + task.includes
+                fullpath = find_in_includes(path, includes)
+                if fullpath is not None:
+                    # The included file is found in a user's include directory.
+                    additional_source = b.find_or_make_file(fullpath)
+                    additional_sources.append(additional_source)
+                    continue
+
+                # At here, one of the followings is satisfied.
+                # 1. The included file is not found in any directories.
+                # 2. The included file is not a target of any tasks. I don't
+                #    know how to generate it.
+                fmt = "WARNING: Cannot find a task for {path}"
+                print(fmt.format(**locals()))
+    except FileNotFoundError:
+        # If a source file (.c) will be generated from a parser rules (.y), the
+        # source file may not be in the directory at this time.
+        pass
+    return additional_sources
+
+def add_included_sources(b):
+    for task in b.tasks:
+        for target in task.targets:
+            for source in target.sources:
+                additional_sources = find_additional_sources(b, task, source)
+                target.additional_sources += additional_sources
+
+                rest = additional_sources
+                while 0 < len(rest):
+                    source = rest[0]
+                    sources = find_additional_sources(b, task, source)
+                    for src in sources:
+                        if src in target.additional_sources:
                             continue
-                        path = m.group("path")
-                        system_include_dirs = [
-                                "/usr/include",
-                                "/usr/local/include"]
-                        fullpath = find_in_includes(path, system_include_dirs)
-                        if fullpath is not None:
-                            # The header file is found in a system include
-                            # directory. Updating such file is rare, so it is
-                            # ignored.
-                            continue
-                        includes = [task.dirpath] + task.includes
-                        fullpath = find_in_includes(path, includes)
-                        if fullpath is not None:
-                            # The included file is found in a user's include
-                            # directory.
-                            task.additional_sources.append(fullpath)
-                            continue
-                        t = find_task_of_orphan_target(path, tasks, includes)
-                        if t is None:
-                            # In here case:
-                            # 1. The included file is not found in any
-                            #    directories.
-                            # 2. The included file is not a target of any tasks.
-                            #    I don't know how to generate it.
-                            fmt = "WARNING: Cannot find a task for {path}"
-                            print(fmt.format(**locals()))
-                            continue
-                        task.additional_sources.extend(t.targets)
-            except FileNotFoundError:
-                # If a source file (.c) will be generated from a parser rules
-                # (.y), the source file may not be in the directory at this
-                # time.
-                pass
+                        target.additional_sources.append(src)
+                        rest.append(src)
+                    rest = rest[1:]
+
+def cache_sources(b):
+    for task in b.tasks:
+        task.additional_sources = get_all_additional_sources_of_task(task)
 
 def read_build_settings(conf, top_dir, dirpath, config):
     settings = run_path(join(dirpath, DEFAULT_FILENAME))
-    b = Build(dirpath, config)
+    b = Build(top_dir, dirpath, config)
     g = {
             "command": b.command,
             "program": b.program,
@@ -608,7 +701,8 @@ def read_build_settings(conf, top_dir, dirpath, config):
             "recurse": b.recurse }
     update_globals(settings, g)
     settings["build"]()
-    add_included_sources(b.tasks, top_dir)
+    add_included_sources(b)
+    cache_sources(b)
     return b
 
 def make_subdirs(ctx, dirpath, subdirs, target="all"):
@@ -622,33 +716,64 @@ def clean(ctx, top_dir, dirpath, config):
         clean(ctx, top_dir, join(dirpath, subdir), config)
     for task in b.tasks:
         for target in task.targets:
+            name = target.name
             try:
-                unlink(join(dirpath, target) if target[0] != "/" else target)
+                unlink(join(dirpath, name) if name[0] != "/" else name)
             except FileNotFoundError:
                 pass
 
-def log_tasks(ctx, tasks):
+def log_tasks(ctx, b):
     log = ctx.log
-    for i, task in enumerate(tasks):
-        log("task{i}:".format(**locals()))
-        for fmt in [
-                "dirpath: {dirpath}",
-                "targets: {targets}",
-                "sources: {sources}",
-                "commands: {commands}",
-                "includes: {includes}",
-                "additional_sources: {additional_sources}"]:
-            log("  " + fmt.format(**task.__dict__))
+    for i, task in enumerate(b.tasks):
+        targets = chain_filenames(task.targets)
+        additional_sources = chain_filenames(task.additional_sources)
+        commands = task.commands
+        includes = task.includes
+        log("""\
+task{i}:
+  targets: {targets}
+  additional_sources: {additional_sources}
+  commands: {commands}
+  includes: {includes}""".format(**locals()))
+
+def read_install_settings(dirpath):
+    settings = run_path(join(dirpath, DEFAULT_FILENAME))
+    i = Install()
+    g = {
+            "recurse": i.recurse,
+            "install_bin": i.install_bin }
+    update_globals(settings, g)
+    settings["install"]()
+    return i
+
+def install_main(ctx, dirpath, config, f, fp):
+    i = read_install_settings(dirpath)
+    for subdir in i.subdirs:
+        install_main(ctx, join(dirpath, subdir), config, f, fp)
+    bindir = join(config["prefix"], "bin")
+    for bin in i.bin:
+        src = join(dirpath, bin)
+        dest = join(bindir, bin)
+        ctx.log("install: {src} -> {dest}".format(**locals()))
+        print(dest, file=fp)
+        f(src, dest)
+
+def install(ctx, dirpath, config):
+    with open(join(VAR_DIR, "install.lst"), "w") as fp:
+        install_main(ctx, dirpath, config, copy, fp)
+
+def install_dev(ctx, dirpath, config):
+    with open(join(VAR_DIR, "install-dev.lst"), "w") as fp:
+        install_main(ctx, dirpath, config, symlink, fp)
 
 def build(ctx, top_dir, dirpath, config):
     b = read_build_settings(ctx.conf, top_dir, dirpath, config)
     make_subdirs(ctx, dirpath, b.subdirs_to_make)
     for subdir in b.subdirs:
         build(ctx, top_dir, join(dirpath, subdir), config)
-    tasks = b.tasks
-    log_tasks(ctx, tasks)
-    for root in find_root_targets(tasks):
-        resolve(ctx, top_dir, root, tasks)
+    log_tasks(ctx, b)
+    for root in find_root_targets(b.tasks):
+        resolve_task(ctx, b, root)
 
 def get_request():
     try:
@@ -661,6 +786,17 @@ def read_config_py():
         return run_path(CONFIG_PY)
     except FileNotFoundError:
         return {}
+
+def deinstall_main(lst):
+    with open(join(VAR_DIR, lst)) as fp:
+        for path in fp:
+            unlink(path.strip())
+
+def deinstall():
+    deinstall_main("install.lst")
+
+def deinstall_dev():
+    deinstall_main("install-dev.lst")
 
 def main():
     try:
@@ -675,11 +811,15 @@ def main():
         ctx = Context(fp, config.get(CONF_KEY, { "top_dir": top_dir }))
 
         d = {
+                "deinstall-dev": partial(deinstall_dev),
+                "deinstall": partial(deinstall),
+                "install-dev": partial(install_dev, ctx, top_dir, config),
+                "install": partial(install, ctx, top_dir, config),
                 "clean": partial(clean, ctx, top_dir, top_dir, config),
                 "build": partial(build, ctx, top_dir, top_dir, config),
                 "configure": partial(configure, ctx) }
         d.get(req, lambda: None)()
-        ctx.log("End")
+        ctx.log("Ended gracefully.")
 
 main()
 

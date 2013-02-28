@@ -1,13 +1,17 @@
 
+target = "__fawm_config__"
+
+def install():
+    install_bin(target)
+
 def define_executable_rule():
-    target = "__fawm_config__"
     sources = ["main.c", "memory.c", "lex.yy.c", "y.tab.c"]
     # YY_NO_UNPUT orders lex.yy.c to exclude yyunput(), YY_NO_INPUT excludes
     # input().
     opts = ["-D" + m for m in ["YY_NO_UNPUT", "YY_NO_INPUT", "YYDEBUG"]]
     cflags = ["-Wall", "-Werror", "-O3", "-g"] + opts
     includes = ["{top_dir}/include", "/usr/local/include"]
-    program(**locals())
+    program(target=target, **locals())
 
 def define_lexer_rule():
     targets = "lex.yy.c"

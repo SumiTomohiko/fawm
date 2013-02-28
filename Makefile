@@ -6,6 +6,9 @@ all: build
 install:
 	@$(BUILD_CMD) install
 
+install-dev:
+	@$(BUILD_CMD) install-dev
+
 clean:
 	@$(BUILD_CMD) clean
 

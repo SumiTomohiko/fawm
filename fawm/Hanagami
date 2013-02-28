@@ -1,6 +1,7 @@
 
+target = "fawm"
+
 def build():
-    target = "fawm"
     sources = "main.c"
     cflags = ["-Wall", "-Werror", "-O3", "-g"]
     includes = [
@@ -9,6 +10,9 @@ def build():
             "/usr/local/include/freetype2"]
     lib = ["X11", "Xft"]
     libpath = "/usr/local/lib"
-    program(**locals())
+    program(target=target, **locals())
+
+def install():
+    install_bin(target)
 
 # vim: tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=python
