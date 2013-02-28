@@ -10,7 +10,6 @@ Features
 
 * Popup menu
 * Taskbar
-* Written in C with about 2,000 lines.
 * MIT Lisence
 * (fawm is not a tiling window manager)
 
@@ -55,8 +54,6 @@ Known Bugs
 
 * Close/maximize/minimize buttons have no image. They are only three dark boxes.
 * Maximize button does not work.
-* Users cannot customize the popup menu at any configuration files (changing
-  source and recompiling are needed).
 * Almost no documentations.
 
 Author
