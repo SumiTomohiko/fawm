@@ -2609,22 +2609,28 @@ convert_offset_to_pointer(Config* config)
 #undef offset2ptr
 }
 
-static Bool
-read_config(char* fawm_exe, const char* config_file, Config** config)
+static char* config_exe = "__fawm_config__";
+
+static char*
+make_config_exe_path(char* dest, size_t size, const char* fawm_exe)
 {
-#if 0
     /*
      * For compatibility, I prepare a writable buffer for dirname(3).
      */
     char* buf = (char*)alloca(strlen(fawm_exe) + 1);
     strcpy(buf, fawm_exe);
     const char* dir = dirname(buf);
-#endif
-    char exe[MAXPATHLEN];
-#if 0
-    snprintf(exe, array_sizeof(exe), "%s/__fawm_config__", dir);
-#endif
-    snprintf(exe, array_sizeof(exe), "__fawm_config__");
+    snprintf(dest, size, "%s/%s", dir, config_exe);
+
+    return dest;
+}
+
+static Bool
+read_config(char* fawm_exe, const char* config_file, Config** config)
+{
+    char buf[MAXPATHLEN];
+    const char* p = strchr(fawm_exe, '/');
+    const char* exe = p != NULL ? make_config_exe_path(buf, array_sizeof(buf), fawm_exe) : config_exe;
 
     char cmd[MAXPATHLEN];
     snprintf(cmd, array_sizeof(cmd), "%s %s", exe, config_file);
