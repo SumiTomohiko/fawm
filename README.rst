@@ -39,15 +39,31 @@ Write in your ``~/.xinitrc``::
 Popup Menu
 ----------
 
-Clicking the root window show you the popup menu. It has three items (Firefox,
-mlterm and exit).
+Clicking the root window show you the popup menu. The popup menu appears by
+clicking the most left box of the taskbar.
 
-The popup menu appears by clicking the most left box of the taskbar.
+You can define items of this menu in ``~/.fawm.conf`` (below).
 
 Wallpaper
 ---------
 
 fawm cannot set a wallpaper. Please use ``xloadimage -onroot``.
+
+``~/.fawm.conf``
+================
+
+fawm reads ``~/.fawm.conf`` at starting to define items of the popup menu.
+Syntax of this file likes::
+
+  # A line starting with "#" is a comment.
+  menu
+    exec "Firefox" "firefox"
+    exec "mlterm" "mlterm"
+    :
+    exec <caption> <command>
+    :
+    exit
+  end
 
 Known Bugs
 ==========
