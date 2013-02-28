@@ -1,31 +1,45 @@
 #if !defined(FAWM_PRIVATE_H_INCLUDED)
 #define FAWM_PRIVATE_H_INCLUDED
 
-typedef int pos_t;
+#include <stddef.h>
 
-struct Item {
-    enum {
-        TYPE_EXEC,
-        TYPE_EXIT
-    } type;
-    pos_t caption;
-    pos_t command;
+enum MenuItemType {
+    MENU_ITEM_TYPE_EXEC,
+    MENU_ITEM_TYPE_EXIT
 };
 
-typedef struct Item Item;
+typedef enum MenuItemType MenuItemType;
 
-#define X_OF_ITEM(menu, item, x)    ((uintptr_t)(menu) + (item)->x)
-#define CAPTION_OF_ITEM(menu, item) (char*)X_OF_ITEM((menu), (item), caption)
-#define COMMAND_OF_ITEM(menu, item) (char*)X_OF_ITEM((menu), (item), command)
+#define DEFINE_MEMBER(type, name) \
+    union { \
+        ptrdiff_t offset; \
+        type* ptr; \
+    } name;
+
+struct MenuItem {
+    enum MenuItemType type;
+    union {
+        struct {
+            DEFINE_MEMBER(char, caption);
+            DEFINE_MEMBER(char, command);
+        } exec;
+    } u;
+};
+
+typedef struct MenuItem MenuItem;
 
 struct Menu {
-    pos_t items;
+    DEFINE_MEMBER(MenuItem, items);
     int items_num;
 };
 
 typedef struct Menu Menu;
 
-#define ITEMS_OF_MENU(menu) (Item*)((uintptr_t)(menu) + (menu)->items)
+struct Config {
+    DEFINE_MEMBER(Menu, menu);
+};
+
+typedef struct Config Config;
 
 #endif
 /**

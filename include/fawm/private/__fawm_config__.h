@@ -3,9 +3,19 @@
 
 #include <sys/types.h>
 
+#include <fawm/private.h>
+
+struct MenuItemList {
+    struct MenuItemList* next;
+    struct MenuItem* item;
+};
+
+typedef struct MenuItemList MenuItemList;
+
 void* memory_allocate(size_t);
 void memory_dispose();
 void memory_initialize();
+void parser_initialize(Config*);
 
 #endif
 /**

@@ -1,10 +1,13 @@
 #include <assert.h>
 #include <errno.h>
 #include <getopt.h>
+#include <libgen.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/param.h>
 #include <sys/resource.h>
 #include <sys/select.h>
 #include <sys/time.h>
@@ -107,12 +110,7 @@ struct WindowManager {
         GC selected_gc;
         XftDraw* draw;
         int margin;
-        int items_num;
         int selected_item;
-        struct {
-            char caption[32];
-            char command[32];
-        } items[3];
     } popup_menu;
 
     struct {
@@ -134,6 +132,8 @@ struct WindowManager {
     } atoms;
 
     FILE* log_file; /* For debug */
+
+    struct Config* config;
 };
 
 typedef struct WindowManager WindowManager;
@@ -1453,7 +1453,24 @@ detect_selected_popup_item(WindowManager* wm, int x, int y)
         return -1;
     }
     int index = (y - wa.y) / compute_font_height(wm->title_font);
-    return wm->popup_menu.items_num <= index ? -1 : index;
+    return wm->config->menu.ptr->items_num <= index ? -1 : index;
+}
+
+static const char* caption_of_exit = "exit";
+
+static const char*
+get_menu_item_caption(MenuItem* item)
+{
+    switch (item->type) {
+    case MENU_ITEM_TYPE_EXIT:
+        return caption_of_exit;
+    case MENU_ITEM_TYPE_EXEC:
+        return item->u.exec.caption.ptr;
+    default:
+        assert(false);
+        break;
+    }
+    return NULL;
 }
 
 static void
@@ -1477,11 +1494,13 @@ draw_popup_menu(WindowManager* wm)
 
     XftDraw* draw = wm->popup_menu.draw;
     int y = - font->descent;
+    Menu* menu = wm->config->menu.ptr;
+    int items_num = menu->items_num;
     int i;
-    for (i = 0; i < wm->popup_menu.items_num; i++) {
+    for (i = 0; i < items_num; i++) {
         y += item_height;
-        const char* text = wm->popup_menu.items[i].caption;
-        draw_title_font_string(wm, draw, wm->popup_menu.margin, y, text);
+        const char* caption = get_menu_item_caption(&menu->items.ptr[i]);
+        draw_title_font_string(wm, draw, wm->popup_menu.margin, y, caption);
     }
 }
 
@@ -1884,11 +1903,6 @@ fork_child(char* cmd)
 static void
 execute(WindowManager* wm, char* cmd)
 {
-    if (strcmp(cmd, "exit") == 0) {
-        wm->running = False;
-        return;
-    }
-
     pid_t pid = do_fork();
     if (pid == 0) {
         fork_child(cmd);
@@ -1911,7 +1925,16 @@ process_button_release(WindowManager* wm, XButtonEvent* e)
     if (index < 0) {
         return;
     }
-    execute(wm, wm->popup_menu.items[index].command);
+    MenuItem* item = &wm->config->menu.ptr->items.ptr[index];
+    switch (item->type) {
+    case MENU_ITEM_TYPE_EXIT:
+        wm->running = False;
+        break;
+    default:
+        assert(item->type == MENU_ITEM_TYPE_EXEC);
+        execute(wm, item->u.exec.command.ptr);
+        break;
+    }
 }
 
 static void
@@ -2263,9 +2286,10 @@ static int
 compute_popup_menu_width(WindowManager* wm)
 {
     int max = 0;
+    Menu* menu = wm->config->menu.ptr;
     int i;
-    for (i = 0; i < wm->popup_menu.items_num; i++) {
-        const char* caption = wm->popup_menu.items[i].caption;
+    for (i = 0; i < menu->items_num; i++) {
+        const char* caption = get_menu_item_caption(&menu->items.ptr[i]);
         int len = strlen(caption);
         int width = compute_text_width(wm, wm->title_font, caption, len);
         max = max < width ? width : max;
@@ -2302,16 +2326,9 @@ setup_popup_menu(WindowManager* wm)
     assert(wm->popup_menu.draw != NULL);
     wm->popup_menu.margin = 8;
 
-    wm->popup_menu.items_num = array_sizeof(wm->popup_menu.items);
-    strcpy(wm->popup_menu.items[0].caption, "Firefox");
-    strcpy(wm->popup_menu.items[0].command, "firefox");
-    strcpy(wm->popup_menu.items[1].caption, "mlterm");
-    strcpy(wm->popup_menu.items[1].command, "mlterm");
-    strcpy(wm->popup_menu.items[2].caption, "exit");
-    strcpy(wm->popup_menu.items[2].command, "exit");
-
     int width = 2 * wm->popup_menu.margin + compute_popup_menu_width(wm);
-    int height = compute_font_height(wm->title_font) * wm->popup_menu.items_num;
+    int font_height = compute_font_height(wm->title_font);
+    int height = font_height * wm->config->menu.ptr->items_num;
     XXResizeWindow(wm, display, w, width, height);
 }
 
@@ -2562,17 +2579,94 @@ wm_main(WindowManager* wm, Display* display, const char* log_file, int argc, cha
     }
 }
 
+static Bool
+read_file(void* dest, FILE* src, size_t size)
+{
+    size_t nbytes = 0;
+    while (!ferror(src) && (nbytes < size)) {
+        void* ptr = (void*)((uintptr_t)dest + nbytes);
+        nbytes += fread(ptr, size - nbytes, 1, src);
+    }
+    return nbytes == size ? True : False;
+}
+
+static void
+convert_offset_to_pointer(Config* config)
+{
+    uintptr_t base = (uintptr_t)config;
+#define offset2ptr(type, ref)   ref.ptr = (type*)(base + ref.offset)
+    offset2ptr(Menu, config->menu);
+
+    Menu* menu = config->menu.ptr;
+    offset2ptr(MenuItem, menu->items);
+
+    int i;
+    for (i = 0; i < menu->items_num; i++) {
+        MenuItem* item = &menu->items.ptr[i];
+        offset2ptr(char, item->u.exec.caption);
+        offset2ptr(char, item->u.exec.command);
+    }
+#undef offset2ptr
+}
+
+static Bool
+read_config(char* fawm_exe, const char* config_file, Config** config)
+{
+#if 0
+    /*
+     * For compatibility, I prepare a writable buffer for dirname(3).
+     */
+    char* buf = (char*)alloca(strlen(fawm_exe) + 1);
+    strcpy(buf, fawm_exe);
+    const char* dir = dirname(buf);
+#endif
+    char exe[MAXPATHLEN];
+#if 0
+    snprintf(exe, array_sizeof(exe), "%s/__fawm_config__", dir);
+#endif
+    snprintf(exe, array_sizeof(exe), "__fawm_config__");
+
+    char cmd[MAXPATHLEN];
+    snprintf(cmd, array_sizeof(cmd), "%s %s", exe, config_file);
+
+    FILE* fpin = popen(cmd, "r");
+    assert(fpin != NULL);
+    size_t size;
+    if (!read_file(&size, fpin, sizeof(size))) {
+        pclose(fpin);
+        return False;
+    }
+    *config = (Config*)malloc(size);
+    if (!read_file(*config, fpin, size)) {
+        pclose(fpin);
+        return False;
+    }
+    if (pclose(fpin) != 0) {
+        return False;
+    }
+
+    convert_offset_to_pointer(*config);
+    return True;
+}
+
 int
 main(int argc, char* argv[])
 {
-    char log_file[64] = { '\0' };
+    char config_file[MAXPATHLEN];
+    const char* home = getenv("HOME");
+    snprintf(config_file, array_sizeof(config_file), "%s/.fawm.conf", home);
+    char log_file[MAXPATHLEN] = "";
     struct option longopts[] = {
+        { "config", required_argument, NULL, 'c' },
         { "log-file", required_argument, NULL, 'l' },
         { NULL, 0, NULL, 0 }
     };
     int val;
     while ((val = getopt_long_only(argc, argv, "l", longopts, NULL)) != -1) {
         switch (val) {
+        case 'c':
+            strcpy(config_file, optarg);
+            break;
         case 'l':
             if (array_sizeof(log_file) - 1 < strlen(optarg)) {
                 print_error("Log Filename Too Long.");
@@ -2587,6 +2681,12 @@ main(int argc, char* argv[])
         }
     }
 
+    Config* config;
+    if (!read_config(argv[0], config_file, &config)) {
+        print_error("Cannot read config file: %s", config_file);
+        return 1;
+    }
+
     Display* display = XOpenDisplay(NULL);
     if (display == NULL) {
         print_error("XOpenDisplay failed.");
@@ -2594,9 +2694,11 @@ main(int argc, char* argv[])
     }
 
     WindowManager wm;
+    wm.config = config;
     wm_main(&wm, display, log_file, argc - optind, argv + optind);
 
     XCloseDisplay(display);
+    free(config);
 
     return 0;
 }
