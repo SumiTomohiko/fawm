@@ -22,6 +22,7 @@
 #include <X11/Xft/Xft.h>
 #include <X11/cursorfont.h>
 
+#include <fawm/config.h>
 #include <fawm/private.h>
 
 struct Frame {
@@ -2665,6 +2666,7 @@ main(int argc, char* argv[])
     struct option longopts[] = {
         { "config", required_argument, NULL, 'c' },
         { "log-file", required_argument, NULL, 'l' },
+        { "version", no_argument, NULL, 'v' },
         { NULL, 0, NULL, 0 }
     };
     int val;
@@ -2680,6 +2682,9 @@ main(int argc, char* argv[])
             }
             strcpy(log_file, optarg);
             break;
+        case 'v':
+            printf("fawm %s\n", FAWM_PACKAGE_VERSION);
+            return 0;
         case ':':
         case '?':
         default:
