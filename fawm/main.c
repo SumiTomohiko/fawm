@@ -2206,60 +2206,137 @@ process_property_notify(WindowManager* wm, XPropertyEvent* e)
     expose_taskbar(wm);
 }
 
+typedef void (*EventHandler)(WindowManager*, XEvent*);
+
+static EventHandler event_handlers[LASTEvent];
+
+static void
+handle_button_press(WindowManager* wm, XEvent* event)
+{
+    XButtonEvent* e = &event->xbutton;
+    process_button_press(wm, e);
+}
+
+static void
+handle_button_release(WindowManager* wm, XEvent* event)
+{
+    XButtonEvent* e = &event->xbutton;
+    process_button_release(wm, e);
+}
+
+static void
+handle_configure_request(WindowManager* wm, XEvent* event)
+{
+    XConfigureRequestEvent* e = &event->xconfigurerequest;
+    process_configure_request(wm, e);
+}
+
+static void
+handle_destroy_notify(WindowManager* wm, XEvent* event)
+{
+    XDestroyWindowEvent* e = &event->xdestroywindow;
+    process_destroy_notify(wm, e);
+}
+
+static void
+handle_expose(WindowManager* wm, XEvent* event)
+{
+    XExposeEvent* e = &event->xexpose;
+    process_expose(wm, e);
+}
+
+static void
+handle_leave_notify(WindowManager* wm, XEvent* event)
+{
+    XCrossingEvent* e = &event->xcrossing;
+    process_leave_notify(wm, e);
+}
+
+static void
+handle_focus_in(WindowManager* wm, XEvent* event)
+{
+    XFocusChangeEvent* e = &event->xfocus;
+    process_focus_in(wm, e);
+}
+
+static void
+handle_focus_out(WindowManager* wm, XEvent* event)
+{
+    XFocusChangeEvent* e = &event->xfocus;
+    process_focus_out(wm, e);
+}
+
+static void
+handle_motion_notify(WindowManager* wm, XEvent* event)
+{
+    /*
+     * Hmm... I dislike to reuse an object (event) for diffent usages.
+     */
+    XEvent last_event;
+    memcpy(&last_event, event, sizeof(last_event));
+    get_last_event(wm, event->xmotion.window, MotionNotify, &last_event);
+
+    XMotionEvent* e = &last_event.xmotion;
+    process_motion_notify(wm, e);
+}
+
+static void
+handle_map_request(WindowManager* wm, XEvent* event)
+{
+    XMapRequestEvent* e = &event->xmaprequest;
+    process_map_request(wm, e);
+}
+
+static void
+handle_property_notify(WindowManager* wm, XEvent* event)
+{
+    XPropertyEvent* e = &event->xproperty;
+    process_property_notify(wm, e);
+}
+
+static void
+handle_unmap_notify(WindowManager* wm, XEvent* event)
+{
+    XUnmapEvent* e = &event->xunmap;
+    process_unmap_notify(wm, e);
+}
+
+static void
+nop(WindowManager* _, XEvent* __)
+{
+}
+
+static void
+initialize_event_handlers()
+{
+    int i;
+    for (i = 0; i < array_sizeof(event_handlers); i++) {
+        event_handlers[i] = nop;
+    }
+
+#define REGISTER_HANDLER(type, handler) \
+    event_handlers[(type)] = handler
+    REGISTER_HANDLER(ButtonPress, handle_button_press);
+    REGISTER_HANDLER(ButtonRelease, handle_button_release);
+    REGISTER_HANDLER(ConfigureRequest, handle_configure_request);
+    REGISTER_HANDLER(DestroyNotify, handle_destroy_notify);
+    REGISTER_HANDLER(Expose, handle_expose);
+    REGISTER_HANDLER(LeaveNotify, handle_leave_notify);
+    REGISTER_HANDLER(FocusIn, handle_focus_in);
+    REGISTER_HANDLER(FocusOut, handle_focus_out);
+    REGISTER_HANDLER(MotionNotify, handle_motion_notify);
+    REGISTER_HANDLER(MapRequest, handle_map_request);
+    REGISTER_HANDLER(PropertyNotify, handle_property_notify);
+    REGISTER_HANDLER(UnmapNotify, handle_unmap_notify);
+#undef REGISTER_HANDLER
+}
+
 static void
 process_event(WindowManager* wm, XEvent* e)
 {
     int type = e->type;
     LOG(wm, "%s: window=0x%08x", event_name[type], e->xany.window);
-    if (type == ButtonPress) {
-        XButtonEvent* ev = &e->xbutton;
-        process_button_press(wm, ev);
-    }
-    else if (type == ButtonRelease) {
-        XButtonEvent* ev = &e->xbutton;
-        process_button_release(wm, ev);
-    }
-    else if (type == ConfigureRequest) {
-        XConfigureRequestEvent* cre = &e->xconfigurerequest;
-        process_configure_request(wm, cre);
-    }
-    else if (type == DestroyNotify) {
-        XDestroyWindowEvent* ev = &e->xdestroywindow;
-        process_destroy_notify(wm, ev);
-    }
-    else if (type == Expose) {
-        XExposeEvent* ev = &e->xexpose;
-        process_expose(wm, ev);
-    }
-    else if (type == LeaveNotify) {
-        XCrossingEvent* ev = &e->xcrossing;
-        process_leave_notify(wm, ev);
-    }
-    else if (type == FocusIn) {
-        XFocusChangeEvent* ev = &e->xfocus;
-        process_focus_in(wm, ev);
-    }
-    else if (type == FocusOut) {
-        XFocusChangeEvent* ev = &e->xfocus;
-        process_focus_out(wm, ev);
-    }
-    else if (type == MotionNotify) {
-        get_last_event(wm, e->xmotion.window, MotionNotify, e);
-        XMotionEvent* ev = &e->xmotion;
-        process_motion_notify(wm, ev);
-    }
-    else if (type == MapRequest) {
-        XMapRequestEvent* ev = &e->xmaprequest;
-        process_map_request(wm, ev);
-    }
-    else if (type == PropertyNotify) {
-        XPropertyEvent* ev = &e->xproperty;
-        process_property_notify(wm, ev);
-    }
-    else if (type == UnmapNotify) {
-        XUnmapEvent* ev = &e->xunmap;
-        process_unmap_notify(wm, ev);
-    }
+    event_handlers[type](wm, e);
 }
 
 static void
@@ -2696,6 +2773,7 @@ main(int argc, char* argv[])
         }
     }
 
+    initialize_event_handlers();
     initialize_event_name();
 
     Config* config;
