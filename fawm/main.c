@@ -2026,45 +2026,49 @@ process_unmap_notify(WindowManager* wm, XUnmapEvent* e)
     unmap_frame(wm, frame);
 }
 
-static const char*
-dmxEventName(int type)
+static char event_name[LASTEvent][32];
+
+static void
+initialize_event_name()
 {
-    switch (type) {
-    case KeyPress:         return "KeyPress";
-    case KeyRelease:       return "KeyRelease";
-    case ButtonPress:      return "ButtonPress";
-    case ButtonRelease:    return "ButtonRelease";
-    case MotionNotify:     return "MotionNotify";
-    case EnterNotify:      return "EnterNotify";
-    case LeaveNotify:      return "LeaveNotify";
-    case FocusIn:          return "FocusIn";
-    case FocusOut:         return "FocusOut";
-    case KeymapNotify:     return "KeymapNotify";
-    case Expose:           return "Expose";
-    case GraphicsExpose:   return "GraphicsExpose";
-    case NoExpose:         return "NoExpose";
-    case VisibilityNotify: return "VisibilityNotify";
-    case CreateNotify:     return "CreateNotify";
-    case DestroyNotify:    return "DestroyNotify";
-    case UnmapNotify:      return "UnmapNotify";
-    case MapNotify:        return "MapNotify";
-    case MapRequest:       return "MapRequest";
-    case ReparentNotify:   return "ReparentNotify";
-    case ConfigureNotify:  return "ConfigureNotify";
-    case ConfigureRequest: return "ConfigureRequest";
-    case GravityNotify:    return "GravityNotify";
-    case ResizeRequest:    return "ResizeRequest";
-    case CirculateNotify:  return "CirculateNotify";
-    case CirculateRequest: return "CirculateRequest";
-    case PropertyNotify:   return "PropertyNotify";
-    case SelectionClear:   return "SelectionClear";
-    case SelectionRequest: return "SelectionRequest";
-    case SelectionNotify:  return "SelectionNotify";
-    case ColormapNotify:   return "ColormapNotify";
-    case ClientMessage:    return "ClientMessage";
-    case MappingNotify:    return "MappingNotify";
-    default:               return "<unknown>";
-    }
+    bzero(event_name, sizeof(event_name));
+#define REGISTER_NAME(type) \
+    strncpy(event_name[(type)], #type, sizeof(event_name[(type)]))
+    REGISTER_NAME(KeyPress);
+    REGISTER_NAME(KeyRelease);
+    REGISTER_NAME(ButtonPress);
+    REGISTER_NAME(ButtonRelease);
+    REGISTER_NAME(MotionNotify);
+    REGISTER_NAME(EnterNotify);
+    REGISTER_NAME(LeaveNotify);
+    REGISTER_NAME(FocusIn);
+    REGISTER_NAME(FocusOut);
+    REGISTER_NAME(KeymapNotify);
+    REGISTER_NAME(Expose);
+    REGISTER_NAME(GraphicsExpose);
+    REGISTER_NAME(NoExpose);
+    REGISTER_NAME(VisibilityNotify);
+    REGISTER_NAME(CreateNotify);
+    REGISTER_NAME(DestroyNotify);
+    REGISTER_NAME(UnmapNotify);
+    REGISTER_NAME(MapNotify);
+    REGISTER_NAME(MapRequest);
+    REGISTER_NAME(ReparentNotify);
+    REGISTER_NAME(ConfigureNotify);
+    REGISTER_NAME(ConfigureRequest);
+    REGISTER_NAME(GravityNotify);
+    REGISTER_NAME(ResizeRequest);
+    REGISTER_NAME(CirculateNotify);
+    REGISTER_NAME(CirculateRequest);
+    REGISTER_NAME(PropertyNotify);
+    REGISTER_NAME(SelectionClear);
+    REGISTER_NAME(SelectionRequest);
+    REGISTER_NAME(SelectionNotify);
+    REGISTER_NAME(ColormapNotify);
+    REGISTER_NAME(ClientMessage);
+    REGISTER_NAME(MappingNotify);
+    REGISTER_NAME(GenericEvent);
+#undef REGISTER_NAME
 }
 
 static void
@@ -2206,7 +2210,7 @@ static void
 process_event(WindowManager* wm, XEvent* e)
 {
     int type = e->type;
-    LOG(wm, "%s: window=0x%08x", dmxEventName(type), e->xany.window);
+    LOG(wm, "%s: window=0x%08x", event_name[type], e->xany.window);
     if (type == ButtonPress) {
         XButtonEvent* ev = &e->xbutton;
         process_button_press(wm, ev);
@@ -2691,6 +2695,8 @@ main(int argc, char* argv[])
             return 1;
         }
     }
+
+    initialize_event_name();
 
     Config* config;
     if (!read_config(argv[0], config_file, &config)) {
