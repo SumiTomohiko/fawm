@@ -1747,6 +1747,67 @@ compute_text_width(WindowManager* wm, XftFont* font, const char* text, int len)
     return glyph.width;
 }
 
+static Region
+__XPolygonRegion__(const char* filename, int lineno, WindowManager* wm, XPoint points[], int n, int fill_rule)
+{
+    const char* s = fill_rule == EvenOddRule ? "EvenOddRule" : "WindingRule";
+#define FMT "XPolygonRegion(points=%p, n=%d, fill_rule=%d (%s))"
+    LOG_X(filename, lineno, wm, FMT, points, n, fill_rule, s);
+#undef FMT
+
+    return XPolygonRegion(points, n, fill_rule);
+}
+
+#define XXPolygonRegion(wm, points, n, fill_rule) \
+        __XPolygonRegion__(__FILE__, __LINE__, (wm), (points), (n), (fill_rule))
+
+static Region
+create_padded_region(WindowManager* wm, int x, int y, int width, int height)
+{
+    int padding_size = wm->padding_size;
+    int left = x + padding_size;
+    int top = y + padding_size;
+    int right = x + width - padding_size;
+    int bottom = y + height - padding_size;
+    XPoint points[4];
+    points[0].x = left;
+    points[0].y = top;
+    points[1].x = left;
+    points[1].y = bottom;
+    points[2].x = right;
+    points[2].y = bottom;
+    points[3].x = right;
+    points[3].y = top;
+    return XXPolygonRegion(wm, points, array_sizeof(points), EvenOddRule);
+}
+
+static void
+__XDestroyRegion__(const char* filename, int lineno, WindowManager* wm, Region r)
+{
+    LOG_X0(filename, lineno, wm, "XDestroyRegion(region)");
+    XDestroyRegion(r);
+}
+
+#define XXDestroyRegion(wm, r) __XDestroyRegion__(__FILE__, __LINE__, (wm), (r))
+
+static int
+__XftDrawSetClip__(const char* filename, int lineno, WindowManager* wm, XftDraw* d, Region r)
+{
+    LOG_X0(filename, lineno, wm, "XftDrawSetClip(d, r)");
+    return XftDrawSetClip(d, r);
+}
+
+#define XXftDrawSetClip(wm, d, r) \
+                        __XftDrawSetClip__(__FILE__, __LINE__, (wm), (d), (r))
+
+static void
+clip_padded_region(WindowManager* wm, XftDraw* d, int x, int y, int width, int height)
+{
+    Region region = create_padded_region(wm, x, 0, width, height);
+    XXftDrawSetClip(wm, d, region);
+    XXDestroyRegion(wm, region);
+}
+
 static void
 draw_clock(WindowManager* wm)
 {
@@ -1762,14 +1823,20 @@ draw_clock(WindowManager* wm)
 
     Display* display = wm->display;
     unsigned int width;
-    unsigned int _;
-    get_geometry(wm, DefaultRootWindow(display), &width, &_);
+    unsigned int height;
+    get_geometry(wm, DefaultRootWindow(display), &width, &height);
 
     XftFont* font = wm->taskbar.clock_font;
     int len = strlen(text);
     int x = width - compute_text_width(wm, font, text, len) - wm->padding_size;
 
     XftDraw* draw = wm->taskbar.draw;
+    /*
+     * The clock never overflows because its width is computed. The following
+     * statement is not strict, but causes nothing bad.
+     */
+    clip_padded_region(wm, draw, 0, 0, width, height);
+
     XftColor* color = &wm->title_color;
     int y = font->ascent + wm->padding_size;
     XXftDrawStringUtf8(wm, draw, color, font, x, y, (XftChar8*)text, len);
@@ -1810,12 +1877,45 @@ draw_list_rect(WindowManager* wm, Frame* frame, int x, int width, int height)
     draw_vertical_line(wm, w, gc, x + width, y0, y1);
 }
 
+#if 0
+static Region
+__XCreateRegion__(const char* filename, int lineno, WindowManager* wm)
+{
+    LOG_X0(filename, lineno, wm, "XCreateRegion()");
+    return XCreateRegion();
+}
+
+#define XXCreateRegion(wm)  __XCreateRegion__(__FILE__, __LINE__, (wm))
+
+static int
+__XShrinkRegion__(const char* filename, int lineno, WindowManager* wm, Region r, int dx, int dy)
+{
+    LOG_X(filename, lineno, wm, "XShrinkRegion(r, dx=%d, dy=%d)", dx, dy);
+    return XShrinkRegion(r, dx, dy);
+}
+
+#define XXShrinkRegion(wm, r, dx, dy) \
+                    __XShrinkRegion__(__FILE__, __LINE__, (wm), (r), (dx), (dy))
+
+static int
+__XOffsetRegion__(const char* filename, int lineno, WindowManager* wm, Region r, int dx, int dy)
+{
+    LOG_X(filename, lineno, wm, "XOffsetRegion(r, dx=%d, dy=%d)", dx, dy);
+    return XOffsetRegion(r, dx, dy);
+}
+
+#define XXOffsetRegion(wm, r, dx, dy) \
+                    __XOffsetRegion__(__FILE__, __LINE__, (wm), (r), (dx), (dy))
+#endif
+
 static void
 draw_list_entry(WindowManager* wm, Frame* frame, int x, int width, int height)
 {
     draw_list_rect(wm, frame, x, width, height);
 
     XftDraw* d = wm->taskbar.draw;
+    clip_padded_region(wm, d, x, 0, width, height);
+
     XftColor* color = &wm->title_color;
     XftFont* font = wm->title_font;
     int padding_size = wm->padding_size;
