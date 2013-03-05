@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+1.0.0dev3 (2013-03-05)
+======================
+
+* Fixed the taskbar to clip each item's region in the list.
+* Added day of week into the clock.
+
 1.0.0dev2 (2013-03-01)
 ======================
 
