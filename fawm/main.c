@@ -1818,8 +1818,11 @@ draw_clock(WindowManager* wm)
     }
     struct tm tm;
     localtime_r(&tv.tv_sec, &tm);
-    char text[64];
-    strftime(text, array_sizeof(text), "%Y-%m-%dT%H:%M", &tm);
+    char datetime[32];
+    strftime(datetime, array_sizeof(datetime), "%Y-%m-%d %H:%M", &tm);
+    const char* dow[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    char text[32];
+    snprintf(text, array_sizeof(text), "%s (%s)", datetime, dow[tm.tm_wday]);
 
     Display* display = wm->display;
     unsigned int width;
