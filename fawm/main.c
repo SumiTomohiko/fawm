@@ -2643,7 +2643,11 @@ wm_main(WindowManager* wm, Display* display, const char* log_file, int argc, cha
     XXDefineCursor(wm, display, root, wm->normal_cursor);
     reparent_toplevels(wm);
     XXMapWindow(wm, display, wm->taskbar.window);
-    long mask = Button1MotionMask | ButtonPressMask | ButtonReleaseMask | SubstructureRedirectMask;
+    long mask = 0
+        | Button1MotionMask
+        | ButtonPressMask
+        | ButtonReleaseMask
+        | SubstructureRedirectMask;
     XXSelectInput(wm, display, root, mask);
     LOG(wm, "root window=0x%08x", root);
 
