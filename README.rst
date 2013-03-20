@@ -3,7 +3,7 @@ fawm
 ****
 
 fawm is similar to a fawn. Both of them are small and light. But there is single
-difference. A fawn is a baby deer, but fawm is a window manager.
+difference. A fawn is a baby deer, but fawm is an window manager.
 
 Features
 ========
