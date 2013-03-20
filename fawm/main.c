@@ -30,7 +30,7 @@ struct Frame {
     Window child;
     XftDraw* draw;
     Bool wm_delete_window;
-    char title[64];
+    char title[128];
     int width_inc;
     int height_inc;
     GC line_gc;
