@@ -75,7 +75,6 @@ Known Bugs
 
 * Close/maximize/minimize buttons have no image. They are only three dark boxes.
 * Maximize button does not work.
-* Almost no documentations.
 
 Author
 ======
