@@ -5,6 +5,11 @@ fawm
 fawm is similar to a fawn. Both of them are small and light. But there is single
 difference. A fawn is a baby deer, but fawm is an window manager.
 
+Screenshots
+===========
+
+.. image:: http://neko-daisuki.ddo.jp/~SumiTomohiko/fawm.png
+
 Features
 ========
 
