@@ -8,7 +8,7 @@ difference. A fawn is a baby deer, but fawm is an window manager.
 Screenshots
 ===========
 
-.. image:: http://neko-daisuki.ddo.jp/~SumiTomohiko/fawm.png
+.. image:: http://neko-daisuki.ddo.jp/~SumiTomohiko/fawm-thumbnail.png
 
 Features
 ========
