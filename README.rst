@@ -67,6 +67,7 @@ Syntax of this file likes::
     :
     exec <caption> <command>
     :
+    reload  # reloads the configuration file.
     exit
   end
 

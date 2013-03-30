@@ -21,6 +21,7 @@ static char string[256];
 <INITIAL>"exec"     return T_EXEC;
 <INITIAL>"exit"     return T_EXIT;
 <INITIAL>"menu"     return T_MENU;
+<INITIAL>"reload"   return T_RELOAD;
 <INITIAL>"\n"       return T_NEWLINE;
 <INITIAL>"\""       {
     string[0] = '\0';

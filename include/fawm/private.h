@@ -5,7 +5,8 @@
 
 enum MenuItemType {
     MENU_ITEM_TYPE_EXEC,
-    MENU_ITEM_TYPE_EXIT
+    MENU_ITEM_TYPE_EXIT,
+    MENU_ITEM_TYPE_RELOAD
 };
 
 typedef enum MenuItemType MenuItemType;

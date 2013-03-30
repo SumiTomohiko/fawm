@@ -33,10 +33,12 @@ static size_t
 compute_size_of_menu_item(MenuItem* item)
 {
     size_t size = sizeof(MenuItem);
-    if (item->type == MENU_ITEM_TYPE_EXIT) {
+
+    MenuItemType type = item->type;
+    if ((type == MENU_ITEM_TYPE_EXIT) || (type == MENU_ITEM_TYPE_RELOAD)) {
         return size;
     }
-    assert(item->type == MENU_ITEM_TYPE_EXEC);
+    assert(type == MENU_ITEM_TYPE_EXEC);
 
     size += align(strlen(item->u.exec.caption.ptr) + 1);
     size += align(strlen(item->u.exec.command.ptr) + 1);
@@ -82,6 +84,7 @@ serialize_menu_item(MenuItem* new_item, MenuItem* item, uintptr_t base, uintptr_
         *pos += align(len);
         break;
     case MENU_ITEM_TYPE_EXIT:
+    case MENU_ITEM_TYPE_RELOAD:
         break;
     default:
         assert(false);

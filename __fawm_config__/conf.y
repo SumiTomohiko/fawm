@@ -134,6 +134,9 @@ menu_item
         | T_EXIT {
             $$ = allocate_menu_item(MENU_ITEM_TYPE_EXIT);
         }
+        | T_RELOAD {
+            $$ = allocate_menu_item(MENU_ITEM_TYPE_RELOAD);
+        }
         | /* empty */ {
             $$ = NULL;
         }
