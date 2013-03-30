@@ -26,10 +26,10 @@ Requirements
 Install
 =======
 
-fawm needs Python 3.x to compile. You will get ``src/fawm`` with the following
-command::
+fawm needs Python 3.x to compile. You will get ``fawm/fawm`` and
+``__fawm_config__/__fawm_config__`` with the following command::
 
-  $ ./configure && make
+  $ ./configure --prefix=${HOME}/.local && make
 
 How to Use
 ==========
