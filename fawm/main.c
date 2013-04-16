@@ -2001,8 +2001,8 @@ static void
 fork_child(char* cmd)
 {
     pid_t pid = do_fork();
-    char* argv[] = { "/bin/sh", "-c", cmd, NULL };
     if (pid == 0) {
+        char* argv[] = { "/bin/sh", "-c", cmd, NULL };
         execv(argv[0], argv);
         exit(1);
     }
