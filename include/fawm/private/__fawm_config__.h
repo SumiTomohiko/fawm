@@ -12,7 +12,6 @@ struct MenuItemList {
 
 typedef struct MenuItemList MenuItemList;
 
-void die(const char*, ...);
 void* memory_allocate(size_t);
 void memory_dispose();
 void memory_initialize();

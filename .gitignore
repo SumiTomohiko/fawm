@@ -4,7 +4,6 @@
 .gdb_history
 .tissue
 __fawm_config__/__fawm_config__
-__fawm_config__/die.o
 __fawm_config__/lex.yy.c
 __fawm_config__/lex.yy.o
 __fawm_config__/main.o

@@ -5,7 +5,7 @@ def install():
     install_bin(target)
 
 def define_executable_rule():
-    sources = ["die.c", "main.c", "memory.c", "lex.yy.c", "y.tab.c"]
+    sources = ["main.c", "memory.c", "lex.yy.c", "y.tab.c"]
     # YY_NO_UNPUT orders lex.yy.c to exclude yyunput(), YY_NO_INPUT excludes
     # input().
     opts = ["-D" + m for m in ["YY_NO_UNPUT", "YY_NO_INPUT", "YYDEBUG"]]
