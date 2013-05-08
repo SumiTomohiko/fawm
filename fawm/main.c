@@ -2294,17 +2294,6 @@ configure_frame(WindowManager* wm, Window parent, Window w, XConfigureRequestEve
 {
     Display* display = wm->display;
     unsigned long value_mask = e->value_mask;
-    int frame_size = wm->frame_size;
-    if (value_mask & CWX) {
-        XWindowChanges changes;
-        changes.x = e->x - frame_size;
-        XXConfigureWindow(wm, display, parent, CWX, &changes);
-    }
-    if (value_mask & CWY) {
-        XWindowChanges changes;
-        changes.y = e->y - (frame_size + wm->title_height);
-        XXConfigureWindow(wm, display, parent, CWY, &changes);
-    }
     if (value_mask & CWWidth) {
         XWindowChanges changes;
         int width = e->width;
