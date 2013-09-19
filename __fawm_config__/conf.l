@@ -47,6 +47,11 @@ static char string[256];
     assert(strlen(string) < sizeof(string));
     strcat(string, yytext);
 }
+<STRING>\\.         {
+    char buf[2];
+    sprintf(buf, "%c", yytext[1]);
+    strcat(string, buf);
+}
 
 <COMMENT>"\n"       {
     BEGIN INITIAL;
