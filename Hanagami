@@ -4,7 +4,7 @@ def build():
 
 install = build
 
-version = "1.0.0dev3"
+version = "1.0.0dev4"
 
 def configure(conf):
     define_prefix("FAWM_")
