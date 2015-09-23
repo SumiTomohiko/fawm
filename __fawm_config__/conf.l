@@ -13,7 +13,7 @@ yywrap()
     return 1;
 }
 
-static char string[256];
+static char string[4096];
 %}
 %start COMMENT STRING
 %%
