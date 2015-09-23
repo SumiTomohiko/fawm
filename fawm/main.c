@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <libgen.h>
 #include <stdarg.h>
@@ -2691,9 +2692,17 @@ open_log(const char* log_file)
     }
     FILE* fp = fopen(log_file, "w");
     if (fp == NULL) {
-        print_error("Cannot open %s: %s", log_file, strerror(errno));
+        goto fail;
+    }
+    if (fcntl(fileno(fp), F_SETFD, FD_CLOEXEC) == -1) {
+        goto fail;
     }
     return fp;
+
+fail:
+    print_error("Cannot open %s: %s", log_file, strerror(errno));
+
+    return NULL;
 }
 
 static void
